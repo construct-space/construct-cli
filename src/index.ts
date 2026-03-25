@@ -102,7 +102,8 @@ graph
   .command('generate <model> [fields...]')
   .alias('g')
   .description('Generate a data model')
-  .action((model, fields) => generate(model, fields))
+  .option('--access <rules>', 'Access rules (e.g. read:member,create:member,update:owner,delete:admin)')
+  .action((model, fields, opts) => generate(model, fields, opts))
 
 graph
   .command('push')

@@ -98,7 +98,39 @@ function generateFieldCode(field: FieldSpec): string {
   return code
 }
 
-export function generate(modelName: string, fieldSpecs: string[]): void {
+const VALID_ACCESS_LEVELS = ['public', 'authenticated', 'owner', 'member', 'admin', 'none'] as const
+
+interface AccessRules {
+  [op: string]: string
+}
+
+function parseAccessRules(accessStr: string): AccessRules {
+  const rules: AccessRules = {}
+  const pairs = accessStr.split(',')
+  for (const pair of pairs) {
+    const [op, level] = pair.split(':')
+    if (!op || !level) {
+      console.error(chalk.red(`Invalid access rule: ${pair}`))
+      console.log(chalk.dim('  Expected format: operation:level (e.g. read:member)'))
+      process.exit(1)
+    }
+    const validOps = ['read', 'create', 'update', 'delete']
+    if (!validOps.includes(op)) {
+      console.error(chalk.red(`Invalid access operation: ${op}`))
+      console.log(chalk.dim(`  Valid operations: ${validOps.join(', ')}`))
+      process.exit(1)
+    }
+    if (!VALID_ACCESS_LEVELS.includes(level as any)) {
+      console.error(chalk.red(`Invalid access level: ${level}`))
+      console.log(chalk.dim(`  Valid levels: ${VALID_ACCESS_LEVELS.join(', ')}`))
+      process.exit(1)
+    }
+    rules[op] = level
+  }
+  return rules
+}
+
+export function generate(modelName: string, fieldSpecs: string[], options?: { access?: string }): void {
   const root = process.cwd()
 
   if (!modelName) {
@@ -127,6 +159,9 @@ export function generate(modelName: string, fieldSpecs: string[]): void {
     process.exit(1)
   }
 
+  // Parse access rules if provided
+  const accessRules = options?.access ? parseAccessRules(options.access) : null
+
   // Collect relation imports
   const relationTargets = fields
     .filter(f => f.type === 'relation')
@@ -135,6 +170,7 @@ export function generate(modelName: string, fieldSpecs: string[]): void {
   // Generate file content
   const imports: string[] = ['defineModel', 'field']
   if (relationTargets.length > 0) imports.push('relation')
+  if (accessRules) imports.push('access')
 
   const lines: string[] = [
     `import { ${imports.join(', ')} } from '@construct-space/graph'`,
@@ -153,7 +189,17 @@ export function generate(modelName: string, fieldSpecs: string[]): void {
     lines.push(`  ${field.name}: ${code},`)
   }
 
-  lines.push('})')
+  if (accessRules) {
+    lines.push('}, {')
+    lines.push('  access: {')
+    for (const [op, level] of Object.entries(accessRules)) {
+      lines.push(`    ${op}: access.${level}(),`)
+    }
+    lines.push('  }')
+    lines.push('})')
+  } else {
+    lines.push('})')
+  }
   lines.push('')
 
   const content = lines.join('\n')

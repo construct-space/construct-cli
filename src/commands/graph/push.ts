@@ -145,5 +145,19 @@ function parseModelFile(content: string, fileName: string): any | null {
     })
   }
 
-  return { name: modelName, fields }
+  // Parse access rules from the model options (third argument to defineModel)
+  const accessRules: Record<string, string> = {}
+  const accessRegex = /(\w+)\s*:\s*access\.(\w+)\(\)/g
+  let accessMatch
+  while ((accessMatch = accessRegex.exec(content)) !== null) {
+    const [, op, level] = accessMatch
+    accessRules[op!] = level!
+  }
+
+  const result: any = { name: modelName, fields }
+  if (Object.keys(accessRules).length > 0) {
+    result.access = accessRules
+  }
+
+  return result
 }
