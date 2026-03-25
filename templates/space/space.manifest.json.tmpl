@@ -1,0 +1,50 @@
+{
+  "id": "{{.ID}}",
+  "name": "{{.DisplayName}}",
+  "version": "0.1.0",
+  "description": "{{.DisplayName}} space for Construct",
+  "author": {
+    "name": "Your Name"
+  },
+  "icon": "i-lucide-box",
+  "scope": "both",
+  "minConstructVersion": "0.2.0",
+  "navigation": {
+    "label": "{{.DisplayName}}",
+    "icon": "i-lucide-box",
+    "to": "{{.ID}}",
+    "order": 100
+  },
+  "pages": [
+    {
+      "path": "",
+      "label": "Home",
+      "icon": "i-lucide-home",
+      "default": true
+    }
+  ],
+  "toolbar": [
+    {
+      "id": "{{.ID}}-new",
+      "icon": "i-lucide-plus",
+      "label": "New {{.DisplayName}}",
+      "action": "create{{.DisplayNameNoSpace}}"
+    }
+  ],
+  "keywords": ["{{.ID}}"],
+  "agent": "agent/config.md",
+  "skills": ["agent/skills/default.md"],
+  "widgets": [
+    {
+      "id": "summary",
+      "name": "{{.DisplayName}} Summary",
+      "description": "Quick summary widget for {{.DisplayName}}",
+      "icon": "i-lucide-box",
+      "defaultSize": "4x1",
+      "sizes": {
+        "2x1": "widgets/summary/2x1.vue",
+        "4x1": "widgets/summary/4x1.vue"
+      }
+    }
+  ]
+}
