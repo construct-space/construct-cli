@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, writeFileSync, unlinkSync, readFileSync, readdirSync, cpSync } from 'fs'
+import { existsSync, mkdirSync, writeFileSync, unlinkSync, readFileSync, cpSync, statSync } from 'fs'
 import { join } from 'path'
+import { createHash } from 'crypto'
 import chalk from 'chalk'
 import { watch } from 'chokidar'
 import * as manifest from '../lib/manifest.js'
@@ -55,21 +56,45 @@ export async function dev(): Promise<void> {
     }
   })
 
-  // Watch dist for auto-install
+  // Watch the IIFE bundle file only (not the whole dist dir — avoids loops)
   const distDir = join(root, 'dist')
-  const distWatcher = watch(distDir, { ignoreInitial: true, depth: 1 })
-  distWatcher.on('all', () => {
-    if (existsSync(distDir)) {
-      mkdirSync(installDir, { recursive: true })
-      cpSync(distDir, installDir, { recursive: true })
+  const bundleFile = join(distDir, `space-${m.id}.iife.js`)
+  let lastChecksum = ''
 
-      const devInstall = devSpaceDir(m.id)
-      const devParent = join(devInstall, '..')
-      if (existsSync(devParent)) {
-        mkdirSync(devInstall, { recursive: true })
-        cpSync(distDir, devInstall, { recursive: true })
-      }
+  const distWatcher = watch(bundleFile, { ignoreInitial: false })
+  distWatcher.on('all', () => {
+    if (!existsSync(bundleFile)) return
+
+    const bundleData = readFileSync(bundleFile)
+    const checksum = createHash('sha256').update(bundleData).digest('hex')
+
+    // Skip if unchanged
+    if (checksum === lastChecksum) return
+    lastChecksum = checksum
+
+    // Write dist/manifest.json with checksum
+    const raw = manifest.readRaw(root)
+    manifest.writeWithBuild(distDir, raw, {
+      checksum,
+      size: bundleData.length,
+      hostApiVersion: '0.2.0',
+      builtAt: new Date().toISOString(),
+    })
+
+    // Copy to spaces dir
+    mkdirSync(installDir, { recursive: true })
+    cpSync(distDir, installDir, { recursive: true })
+    writeFileSync(join(installDir, '.dev'), 'dev')
+
+    // Also install to DEV instance if exists
+    const devInstall = devSpaceDir(m.id)
+    const devParent = join(devInstall, '..')
+    if (existsSync(devParent)) {
+      mkdirSync(devInstall, { recursive: true })
+      cpSync(distDir, devInstall, { recursive: true })
     }
+
+    console.log(chalk.green(`Installed → ${m.id}`))
   })
 
   console.log(chalk.green('Watching for changes... (Ctrl+C to stop)'))

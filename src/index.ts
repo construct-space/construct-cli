@@ -14,8 +14,9 @@ import { update } from './commands/update.js'
 import { graphInit } from './commands/graph/init.js'
 import { generate } from './commands/graph/generate.js'
 import { graphPush } from './commands/graph/push.js'
+import { graphMigrate } from './commands/graph/migrate.js'
 
-export const VERSION = '1.0.0'
+export const VERSION = '1.0.1'
 
 const program = new Command()
 
@@ -109,6 +110,12 @@ graph
   .command('push')
   .description('Register models with the Graph service')
   .action(async () => graphPush())
+
+graph
+  .command('migrate')
+  .description('Compare local models with server schema and apply changes')
+  .option('--apply', 'Apply destructive changes (drop columns, alter constraints)')
+  .action(async (opts) => graphMigrate(opts))
 
 // Space subcommand group (alternative namespace)
 const space = program

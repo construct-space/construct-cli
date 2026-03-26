@@ -68,7 +68,13 @@ export async function graphPush(): Promise<void> {
         'Authorization': `Bearer ${creds.token}`,
         'X-Space-ID': m.id,
       },
-      body: JSON.stringify({ models, version: 1 }),
+      body: JSON.stringify({
+        space_id: m.id,
+        space_name: m.name,
+        project_id: 'default',
+        version: m.version || '0.0.1',
+        manifest: { version: 1, models },
+      }),
     })
 
     if (!resp.ok) {
@@ -155,8 +161,10 @@ function parseModelFile(content: string, fileName: string): any | null {
   }
 
   const result: any = { name: modelName, fields }
+
+  // Build options if access rules found
   if (Object.keys(accessRules).length > 0) {
-    result.access = accessRules
+    result.options = { access: accessRules }
   }
 
   return result

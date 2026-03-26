@@ -9,6 +9,7 @@ const nameRegex = /^[a-z][a-z0-9-]*$/
 interface TemplateData {
   name: string
   id: string
+  idUpper: string
   displayName: string
   displayNameNoSpace: string
 }
@@ -17,6 +18,7 @@ function render(template: string, data: TemplateData): string {
   return template
     .replace(/\{\{\.Name\}\}/g, data.name)
     .replace(/\{\{\.ID\}\}/g, data.id)
+    .replace(/\{\{\.IDUpper\}\}/g, data.idUpper)
     .replace(/\{\{\.DisplayName\}\}/g, data.displayName)
     .replace(/\{\{\.DisplayNameNoSpace\}\}/g, data.displayNameNoSpace)
 }
@@ -57,6 +59,7 @@ export async function scaffold(nameArg?: string, options?: { withTests?: boolean
   const data: TemplateData = {
     name,
     id,
+    idUpper: id.toUpperCase().replace(/[^A-Z0-9]/g, '_'),
     displayName,
     displayNameNoSpace: displayName.replace(/ /g, ''),
   }

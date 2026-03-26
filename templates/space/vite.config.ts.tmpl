@@ -1,3 +1,32 @@
-import { createSpaceBuildConfig } from '@construct-space/cli/vite'
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import { resolve } from 'path'
 
-export default createSpaceBuildConfig('{{.ID}}')
+export default defineConfig({
+  plugins: [vue()],
+  build: {
+    lib: {
+      entry: resolve(__dirname, 'src/entry.ts'),
+      name: '__CONSTRUCT_SPACE_{{.IDUpper}}',
+      fileName: 'space-{{.ID}}',
+      formats: ['iife'],
+    },
+    rollupOptions: {
+      external: ['vue', 'vue-router', 'pinia', '@vueuse/core'],
+      output: {
+        globals: {
+          vue: 'window.__CONSTRUCT__.vue',
+          'vue-router': 'window.__CONSTRUCT__["vue-router"]',
+          pinia: 'window.__CONSTRUCT__.pinia',
+          '@vueuse/core': 'window.__CONSTRUCT__["@vueuse/core"]',
+        },
+      },
+    },
+  },
+  resolve: {
+    alias: {
+      '~': resolve(__dirname),
+      '@': resolve(__dirname, 'src'),
+    },
+  },
+})

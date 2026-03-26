@@ -1,10 +1,10 @@
 {
-  "name": "construct",
-  "version": "1.0.0",
+  "name": "@construct-space/cli",
+  "version": "1.0.4",
   "description": "Construct CLI — scaffold, build, develop, and publish spaces",
   "type": "module",
   "bin": {
-    "construct": "./dist/index.js"
+    "construct": "dist/index.js"
   },
   "exports": {
     ".": {
