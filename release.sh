@@ -23,8 +23,8 @@ NEW="$MAJOR.$MINOR.$PATCH"
 echo "Bumping $CURRENT → $NEW"
 
 # Update version in package.json and src/index.ts
-sed -i '' "s/\"version\": \"$CURRENT\"/\"version\": \"$NEW\"/" "$PKG"
-sed -i '' "s/VERSION = '$CURRENT'/VERSION = '$NEW'/" "$SRC"
+sed -i '' "s/\"version\": \"[0-9]*\.[0-9]*\.[0-9]*\"/\"version\": \"$NEW\"/" "$PKG"
+sed -i '' "s/VERSION = '[0-9]*\.[0-9]*\.[0-9]*'/VERSION = '$NEW'/" "$SRC"
 
 # Build
 bun run build
