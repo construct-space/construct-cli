@@ -86,12 +86,21 @@ export async function dev(): Promise<void> {
     cpSync(distDir, installDir, { recursive: true })
     writeFileSync(join(installDir, '.dev'), 'dev')
 
+    // Copy config.agent if it exists (agent config bundle)
+    const configAgent = join(root, 'config.agent')
+    if (existsSync(configAgent)) {
+      cpSync(configAgent, join(installDir, 'config.agent'))
+    }
+
     // Also install to DEV instance if exists
     const devInstall = devSpaceDir(m.id)
     const devParent = join(devInstall, '..')
     if (existsSync(devParent)) {
       mkdirSync(devInstall, { recursive: true })
       cpSync(distDir, devInstall, { recursive: true })
+      if (existsSync(configAgent)) {
+        cpSync(configAgent, join(devInstall, 'config.agent'))
+      }
     }
 
     console.log(chalk.green(`Installed → ${m.id}`))

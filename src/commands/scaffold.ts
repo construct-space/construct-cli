@@ -80,8 +80,12 @@ export async function scaffold(nameArg?: string, options?: { withTests?: boolean
   ]
   for (const d of dirs) mkdirSync(d, { recursive: true })
 
-  // Find templates directory
-  const templateDir = join(dirname(new URL(import.meta.url).pathname), '..', '..', 'templates', 'space')
+  // Find templates directory — check dist/ (bundled) then dev (src/)
+  const scriptDir = dirname(new URL(import.meta.url).pathname)
+  let templateDir = join(scriptDir, 'templates', 'space')
+  if (!existsSync(templateDir)) {
+    templateDir = join(scriptDir, '..', 'templates', 'space')
+  }
 
   const files: Record<string, string> = {
     'space.manifest.json.tmpl': join(name, 'space.manifest.json'),
