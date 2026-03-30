@@ -49,7 +49,9 @@ export function generate(root: string, m: SpaceManifest): string {
   const pagePrefix = existsSync(join(root, 'src', 'pages')) ? './' : '../'
   const pages = resolvePages(m, pagePrefix)
   const widgets = resolveWidgets(m, '../')
-  const hasActions = existsSync(join(root, 'src', 'actions.ts'))
+  const actionsPath = join(root, 'src', 'actions.ts')
+  const hasActions = existsSync(actionsPath)
+  console.log(`[entry] root=${root} actionsPath=${actionsPath} hasActions=${hasActions}`)
 
   const lines: string[] = [
     '// Auto-generated entry — do not edit manually',

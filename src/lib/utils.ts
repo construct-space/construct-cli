@@ -12,7 +12,8 @@ export function openBrowser(url: string): void {
 }
 
 export function git(dir: string, ...args: string[]): string {
-  return execSync(`git ${args.join(' ')}`, { cwd: dir, encoding: 'utf-8' }).trim()
+  const quoted = args.map(a => a.includes(' ') || a.includes(':') ? `"${a}"` : a)
+  return execSync(`git ${quoted.join(' ')}`, { cwd: dir, encoding: 'utf-8' }).trim()
 }
 
 export function gitSafe(dir: string, ...args: string[]): string | null {

@@ -8,6 +8,13 @@ import { writeEntry } from '../lib/entry.js'
 import { detect, ensureDeps, watchCmd } from '../lib/runtime.js'
 import { spaceDir, devSpaceDir } from '../lib/appdir.js'
 
+export function getEntryWatchPaths(root: string): string[] {
+  return [
+    join(root, manifest.MANIFEST_FILE),
+    join(root, 'src', 'actions.ts'),
+  ]
+}
+
 export async function dev(): Promise<void> {
   const root = process.cwd()
 
@@ -44,16 +51,25 @@ export async function dev(): Promise<void> {
     process.stderr.write(chalk.dim(data.toString()))
   })
 
-  // Watch manifest changes
-  const manifestWatcher = watch(join(root, manifest.MANIFEST_FILE), { ignoreInitial: true })
-  manifestWatcher.on('change', () => {
+  const regenerateEntry = () => {
     try {
       const newM = manifest.read(root)
       writeEntry(root, newM)
-      console.log(chalk.blue('Manifest changed — entry regenerated'))
+      console.log(chalk.blue('Entry regenerated'))
     } catch (err: any) {
       console.error(chalk.red(`Manifest error: ${err.message}`))
     }
+  }
+
+  // Watch entry inputs so src/entry.ts stays aligned with manifest + actions export
+  const entryWatcher = watch(getEntryWatchPaths(root), { ignoreInitial: true })
+  entryWatcher.on('all', (_, changedPath) => {
+    regenerateEntry()
+    if (changedPath.endsWith(manifest.MANIFEST_FILE)) {
+      console.log(chalk.blue('Manifest changed — entry regenerated'))
+      return
+    }
+    console.log(chalk.blue('Actions changed — entry regenerated'))
   })
 
   // Watch the IIFE bundle file only (not the whole dist dir — avoids loops)
