@@ -9,18 +9,13 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "paths": {
-      "@construct/sdk": ["../construct-sdk/src/index.ts"]
+      "@/*": ["./src/*"],
+      "@construct/sdk": ["./node_modules/@construct-space/sdk/src/index.ts"]
     }
   },
   "include": [
     "src/**/*.ts",
-    "pages/**/*.vue",
-    "components/**/*.vue",
-    "composables/**/*.ts",
-    "utils/**/*.ts",
-    "types/**/*.ts",
-    "types.ts",
-    "auto-imports.d.ts",
-    "components.d.ts"
+    "src/**/*.vue",
+    "widgets/**/*.vue"
   ]
 }

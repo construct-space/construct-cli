@@ -27,6 +27,9 @@ describe('generate', () => {
       name: 'Canvas',
       version: '0.1.0',
       description: 'test',
+      author: {
+        name: 'Construct Team',
+      },
       icon: 'icon',
       scope: 'both',
       navigation: {

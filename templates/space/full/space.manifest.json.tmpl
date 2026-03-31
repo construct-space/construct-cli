@@ -21,6 +21,11 @@
       "label": "Home",
       "icon": "i-lucide-home",
       "default": true
+    },
+    {
+      "path": "settings",
+      "label": "Settings",
+      "icon": "i-lucide-settings"
     }
   ],
   "toolbar": [
@@ -33,7 +38,11 @@
   ],
   "keywords": ["{{.ID}}"],
   "agent": "agent/config.md",
-  "skills": ["agent/skills/default.md"],
+  "skills": [
+    "agent/skills/default.md",
+    "agent/skills/data.md",
+    "agent/skills/ui.md"
+  ],
   "actions": "src/actions.ts",
   "widgets": [
     {

@@ -2,6 +2,49 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 
+/**
+ * Host-provided externals — these are supplied by Construct at runtime
+ * via window.__CONSTRUCT__. Do NOT bundle them; they must stay external.
+ *
+ * Full list lives in: construct-app/frontend/lib/spaceHost.ts
+ */
+const hostExternals = [
+  'vue',
+  'vue-router',
+  'pinia',
+  '@vueuse/core',
+  '@vueuse/integrations',
+  '@tauri-apps/api',
+  '@tauri-apps/api/core',
+  '@tauri-apps/api/path',
+  '@tauri-apps/api/event',
+  '@tauri-apps/api/webview',
+  '@tauri-apps/plugin-fs',
+  '@tauri-apps/plugin-shell',
+  '@tauri-apps/plugin-dialog',
+  '@tauri-apps/plugin-process',
+  'lucide-vue-next',
+  'date-fns',
+  'dexie',
+  'zod',
+  '@construct-space/ui',
+  '@construct/sdk',
+  '@construct-space/sdk',
+]
+
+function makeGlobals(externals: string[]): Record<string, string> {
+  const globals: Record<string, string> = {}
+  for (const ext of externals) {
+    // Simple ids use dot access, scoped/slashed ids use bracket access
+    if (/^[a-z]+$/.test(ext)) {
+      globals[ext] = `window.__CONSTRUCT__.${ext}`
+    } else {
+      globals[ext] = `window.__CONSTRUCT__["${ext}"]`
+    }
+  }
+  return globals
+}
+
 export default defineConfig({
   plugins: [vue()],
   build: {
@@ -12,14 +55,9 @@ export default defineConfig({
       formats: ['iife'],
     },
     rollupOptions: {
-      external: ['vue', 'vue-router', 'pinia', '@vueuse/core'],
+      external: hostExternals,
       output: {
-        globals: {
-          vue: 'window.__CONSTRUCT__.vue',
-          'vue-router': 'window.__CONSTRUCT__["vue-router"]',
-          pinia: 'window.__CONSTRUCT__.pinia',
-          '@vueuse/core': 'window.__CONSTRUCT__["@vueuse/core"]',
-        },
+        globals: makeGlobals(hostExternals),
       },
     },
   },

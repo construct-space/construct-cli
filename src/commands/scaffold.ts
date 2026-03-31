@@ -3,6 +3,7 @@ import { join, dirname } from 'path'
 import chalk from 'chalk'
 import { input } from '@inquirer/prompts'
 import { toDisplayName } from '../lib/utils.js'
+import { detect, ensureDeps } from '../lib/runtime.js'
 
 const nameRegex = /^[a-z][a-z0-9-]*$/
 
@@ -12,6 +13,12 @@ interface TemplateData {
   idUpper: string
   displayName: string
   displayNameNoSpace: string
+}
+
+export interface ScaffoldOptions {
+  withTests?: boolean
+  full?: boolean
+  installDeps?: (root: string) => void | Promise<void>
 }
 
 function render(template: string, data: TemplateData): string {
@@ -34,7 +41,13 @@ function writeTemplate(templateDir: string, tmplName: string, outPath: string, d
   writeFileSync(outPath, render(content, data))
 }
 
-export async function scaffold(nameArg?: string, options?: { withTests?: boolean }): Promise<void> {
+async function installScaffoldDeps(root: string): Promise<void> {
+  const rt = detect()
+  console.log(chalk.blue(`Installing dependencies with ${rt.name}...`))
+  ensureDeps(root, rt)
+}
+
+export async function scaffold(nameArg?: string, options?: ScaffoldOptions): Promise<void> {
   let name = nameArg
 
   if (!name) {
@@ -64,7 +77,9 @@ export async function scaffold(nameArg?: string, options?: { withTests?: boolean
     displayNameNoSpace: displayName.replace(/ /g, ''),
   }
 
-  console.log(chalk.blue(`Creating space: ${displayName}`))
+  const isFull = options?.full ?? false
+
+  console.log(chalk.blue(`Creating space: ${displayName}${isFull ? ' (full preset)' : ''}`))
 
   // Create directories
   const dirs = [
@@ -80,15 +95,19 @@ export async function scaffold(nameArg?: string, options?: { withTests?: boolean
   ]
   for (const d of dirs) mkdirSync(d, { recursive: true })
 
-  // Find templates directory — check dist/ (bundled) then dev (src/)
+  // Find templates directory — check dist/ (bundled) then dev paths
   const scriptDir = dirname(new URL(import.meta.url).pathname)
   let templateDir = join(scriptDir, 'templates', 'space')
   if (!existsSync(templateDir)) {
     templateDir = join(scriptDir, '..', 'templates', 'space')
   }
+  if (!existsSync(templateDir)) {
+    // Running from src/commands/ in dev mode — go up two levels
+    templateDir = join(scriptDir, '..', '..', 'templates', 'space')
+  }
 
+  // Base files — always written
   const files: Record<string, string> = {
-    'space.manifest.json.tmpl': join(name, 'space.manifest.json'),
     'package.json.tmpl': join(name, 'package.json'),
     'vite.config.ts.tmpl': join(name, 'vite.config.ts'),
     'index.vue.tmpl': join(name, 'src', 'pages', 'index.vue'),
@@ -104,8 +123,25 @@ export async function scaffold(nameArg?: string, options?: { withTests?: boolean
     'actions.ts.tmpl': join(name, 'src', 'actions.ts'),
   }
 
+  // Full preset uses its own manifest and entry; default uses the base ones
+  if (isFull) {
+    files['full/space.manifest.json.tmpl'] = join(name, 'space.manifest.json')
+    files['full/entry.ts.tmpl'] = join(name, 'src', 'entry.ts')
+  } else {
+    files['space.manifest.json.tmpl'] = join(name, 'space.manifest.json')
+    files['entry.ts.tmpl'] = join(name, 'src', 'entry.ts')
+  }
+
   for (const [tmpl, out] of Object.entries(files)) {
     writeTemplate(templateDir, tmpl, out, data)
+  }
+
+  // Full preset — extra pages, skills
+  if (isFull) {
+    writeTemplate(templateDir, 'full/settings.vue.tmpl', join(name, 'src', 'pages', 'settings.vue'), data)
+    writeTemplate(templateDir, 'full/skill-data.md.tmpl', join(name, 'agent', 'skills', 'data.md'), data)
+    writeTemplate(templateDir, 'full/skill-ui.md.tmpl', join(name, 'agent', 'skills', 'ui.md'), data)
+    console.log(chalk.blue('Full preset: settings page + extra skills added'))
   }
 
   if (options?.withTests) {
@@ -115,10 +151,11 @@ export async function scaffold(nameArg?: string, options?: { withTests?: boolean
     console.log(chalk.blue('E2E testing boilerplate added (Playwright)'))
   }
 
+  await (options?.installDeps ?? installScaffoldDeps)(name)
+
   console.log(chalk.green(`Space '${name}' created!`))
   console.log()
   console.log(`  cd ${name}`)
-  console.log('  bun install')
   console.log('  construct dev')
   console.log()
 }

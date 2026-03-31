@@ -1,0 +1,16 @@
+// Space entry — exports pages, widgets, and actions for the host loader.
+// `construct dev` regenerates this from space.manifest.json on changes.
+import IndexPage from './pages/index.vue'
+import SettingsPage from './pages/settings.vue'
+import { actions } from './actions'
+
+const spaceExport = {
+  pages: {
+    '': IndexPage,
+    'settings': SettingsPage,
+  },
+  widgets: {},
+  actions,
+}
+
+export default spaceExport
