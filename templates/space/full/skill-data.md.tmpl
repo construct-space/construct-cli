@@ -1,0 +1,18 @@
+---
+id: {{.ID}}-data
+name: {{.DisplayName}} Data Management
+description: Skill for managing {{.DisplayName}} data and content
+trigger: {{.ID}} data|content|manage
+category: space
+tools: [read_file, list_dir, glob, grep, write_file]
+---
+
+# {{.DisplayName}} Data Management Skill
+
+This skill handles data operations for the {{.DisplayName}} space.
+
+## Instructions
+- Help users create, read, update, and delete content
+- Validate data before writing
+- Use the space actions API when available
+- Prefer batch operations for bulk changes

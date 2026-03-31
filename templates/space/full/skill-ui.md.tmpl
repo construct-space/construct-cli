@@ -1,0 +1,18 @@
+---
+id: {{.ID}}-ui
+name: {{.DisplayName}} UI Customization
+description: Skill for customizing the {{.DisplayName}} user interface
+trigger: {{.ID}} ui|layout|design|style
+category: space
+tools: [read_file, write_file, glob]
+---
+
+# {{.DisplayName}} UI Customization Skill
+
+This skill helps customize the {{.DisplayName}} space interface.
+
+## Instructions
+- Help users adjust layout and styling
+- Use Construct CSS variables (--app-foreground, --app-background, --app-accent, etc.)
+- Follow the host design system conventions
+- Suggest accessible color combinations

@@ -1,0 +1,31 @@
+<script setup lang="ts">
+/**
+ * {{.DisplayName}} — Settings page
+ */
+import { ref } from 'vue'
+
+const autoSave = ref(true)
+const theme = ref<'system' | 'light' | 'dark'>('system')
+</script>
+
+<template>
+  <div class="h-full overflow-auto p-6">
+    <h1 class="text-xl font-bold text-[var(--app-foreground)] mb-6">Settings</h1>
+
+    <div class="space-y-4 max-w-md">
+      <label class="flex items-center justify-between">
+        <span class="text-sm text-[var(--app-foreground)]">Auto-save</span>
+        <input v-model="autoSave" type="checkbox" class="rounded" />
+      </label>
+
+      <label class="block">
+        <span class="text-sm text-[var(--app-foreground)] block mb-1">Theme</span>
+        <select v-model="theme" class="w-full rounded border border-[var(--app-border)] bg-[var(--app-background)] px-3 py-1.5 text-sm">
+          <option value="system">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </label>
+    </div>
+  </div>
+</template>

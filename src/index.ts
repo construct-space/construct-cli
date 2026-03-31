@@ -32,6 +32,7 @@ program
   .alias('create')
   .description('Create a new Construct space project')
   .option('--with-tests', 'Include E2E testing boilerplate')
+  .option('--full', 'Full preset: multiple pages, extra skills, widget templates')
   .action(async (name, opts) => scaffold(name, opts))
 
 program
@@ -124,6 +125,7 @@ const space = program
 
 space.command('scaffold [name]').alias('new').alias('create')
   .option('--with-tests', 'Include E2E testing boilerplate')
+  .option('--full', 'Full preset: multiple pages, extra skills, widget templates')
   .action(async (name, opts) => scaffold(name, opts))
 space.command('build').option('--entry-only').action(async (opts) => build(opts))
 space.command('dev').action(async () => dev())
