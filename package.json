@@ -1,6 +1,6 @@
 {
   "name": "@construct-space/cli",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "Construct CLI — scaffold, build, develop, and publish spaces",
   "type": "module",
   "bin": {
