@@ -87,6 +87,17 @@ export interface Widget {
   sizes: Record<string, string>
 }
 
+export interface ActionParam {
+  type: string
+  description?: string
+  required?: boolean
+}
+
+export interface ActionDef {
+  description: string
+  params?: Record<string, ActionParam>
+}
+
 export interface SpaceManifest {
   id: string
   name: string
@@ -110,6 +121,8 @@ export interface SpaceManifest {
   theme?: Theme
   hooks?: Hooks
   widgets?: Widget[]
+  /** Inline action metadata for lazy loading — injected by build from src/actions.ts */
+  actions?: string | Record<string, ActionDef>
 }
 
 export interface BuildMeta {
