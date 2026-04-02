@@ -9,7 +9,7 @@ PKG="package.json"
 SRC="src/index.ts"
 
 # Get current version
-CURRENT=$(node -p "require('./$PKG').version")
+CURRENT=$(bun -e "console.log(require('./$PKG').version)")
 IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
 
 case $BUMP in
