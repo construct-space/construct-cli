@@ -16,7 +16,7 @@ import { generate } from './commands/graph/generate.js'
 import { graphPush } from './commands/graph/push.js'
 import { graphMigrate } from './commands/graph/migrate.js'
 
-export const VERSION = '1.1.3'
+export const VERSION = '1.1.4'
 
 const program = new Command()
 
