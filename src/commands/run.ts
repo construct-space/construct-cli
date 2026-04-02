@@ -5,7 +5,11 @@ import * as manifest from '../lib/manifest.js'
 import { bundleAgentDir } from '../lib/agent.js'
 import { spaceDir } from '../lib/appdir.js'
 
-export function run(): void {
+/**
+ * Install a built space to the Construct spaces directory.
+ * This makes it available in the main Construct app (not needed for dev — use the Space Runner instead).
+ */
+export function install(): void {
   const root = process.cwd()
 
   if (!manifest.exists(root)) {
@@ -32,6 +36,6 @@ export function run(): void {
   mkdirSync(installDir, { recursive: true })
   cpSync(distDir, installDir, { recursive: true })
 
-  console.log(chalk.green(`Installed ${m.name} to ${installDir}`))
+  console.log(chalk.green(`Installed ${m.name} → ${installDir}`))
   console.log(chalk.dim('  Restart Construct to load the updated space.'))
 }

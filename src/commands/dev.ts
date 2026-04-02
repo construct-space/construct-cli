@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync, unlinkSync, readFileSync, cpSync, statSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { createHash } from 'crypto'
 import chalk from 'chalk'
@@ -6,7 +6,6 @@ import { watch } from 'chokidar'
 import * as manifest from '../lib/manifest.js'
 import { writeEntry } from '../lib/entry.js'
 import { detect, ensureDeps, watchCmd } from '../lib/runtime.js'
-import { spaceDir, devSpaceDir } from '../lib/appdir.js'
 
 export function getEntryWatchPaths(root: string): string[] {
   return [
@@ -30,19 +29,7 @@ export async function dev(): Promise<void> {
   ensureDeps(root, rt)
   writeEntry(root, m)
 
-  // Install to spaces dir + write .dev marker
-  const installDir = spaceDir(m.id)
-  mkdirSync(installDir, { recursive: true })
-  const devMarker = join(installDir, '.dev')
-  writeFileSync(devMarker, 'dev')
-
-  const cleanup = () => {
-    try { unlinkSync(devMarker) } catch {}
-  }
-  process.on('SIGINT', () => { cleanup(); process.exit(0) })
-  process.on('SIGTERM', () => { cleanup(); process.exit(0) })
-
-  // Start Vite watch
+  // Start Vite watch — rebuilds to dist/ on source changes
   const vite = watchCmd(root, rt)
   vite.stdout?.on('data', (data: Buffer) => {
     process.stdout.write(chalk.dim(data.toString()))
@@ -72,7 +59,8 @@ export async function dev(): Promise<void> {
     console.log(chalk.blue('Actions changed — entry regenerated'))
   })
 
-  // Watch the IIFE bundle file only (not the whole dist dir — avoids loops)
+  // Watch the IIFE bundle → update dist/manifest.json with build metadata.
+  // The Space Runner polls dist/manifest.json builtAt for HMR.
   const distDir = join(root, 'dist')
   const bundleFile = join(distDir, `space-${m.id}.iife.js`)
   let lastChecksum = ''
@@ -84,11 +72,10 @@ export async function dev(): Promise<void> {
     const bundleData = readFileSync(bundleFile)
     const checksum = createHash('sha256').update(bundleData).digest('hex')
 
-    // Skip if unchanged
     if (checksum === lastChecksum) return
     lastChecksum = checksum
 
-    // Write dist/manifest.json with checksum
+    // Update dist/manifest.json — runner detects builtAt change and reloads
     const raw = manifest.readRaw(root)
     manifest.writeWithBuild(distDir, raw, {
       checksum,
@@ -97,32 +84,11 @@ export async function dev(): Promise<void> {
       builtAt: new Date().toISOString(),
     })
 
-    // Copy to spaces dir
-    mkdirSync(installDir, { recursive: true })
-    cpSync(distDir, installDir, { recursive: true })
-    writeFileSync(join(installDir, '.dev'), 'dev')
-
-    // Copy config.agent if it exists (agent config bundle)
-    const configAgent = join(root, 'config.agent')
-    if (existsSync(configAgent)) {
-      cpSync(configAgent, join(installDir, 'config.agent'))
-    }
-
-    // Also install to DEV instance if exists
-    const devInstall = devSpaceDir(m.id)
-    const devParent = join(devInstall, '..')
-    if (existsSync(devParent)) {
-      mkdirSync(devInstall, { recursive: true })
-      cpSync(distDir, devInstall, { recursive: true })
-      if (existsSync(configAgent)) {
-        cpSync(configAgent, join(devInstall, 'config.agent'))
-      }
-    }
-
-    console.log(chalk.green(`Installed → ${m.id}`))
+    console.log(chalk.green(`Built → dist/ (${(bundleData.length / 1024).toFixed(1)} KB)`))
   })
 
   console.log(chalk.green('Watching for changes... (Ctrl+C to stop)'))
+  console.log(chalk.dim('Use the Preview button in Construct to open the Space Runner'))
 
   // Keep process alive
   await new Promise(() => {})

@@ -4,7 +4,7 @@ import { Command } from 'commander'
 import { scaffold } from './commands/scaffold.js'
 import { build } from './commands/build.js'
 import { dev } from './commands/dev.js'
-import { run } from './commands/run.js'
+import { install } from './commands/run.js'
 import { publish } from './commands/publish.js'
 import { validate } from './commands/validate.js'
 import { check } from './commands/check.js'
@@ -16,7 +16,7 @@ import { generate } from './commands/graph/generate.js'
 import { graphPush } from './commands/graph/push.js'
 import { graphMigrate } from './commands/graph/migrate.js'
 
-export const VERSION = '1.0.7'
+export const VERSION = '1.1.0'
 
 const program = new Command()
 
@@ -47,9 +47,10 @@ program
   .action(async () => dev())
 
 program
-  .command('run')
+  .command('install')
+  .alias('run')
   .description('Install built space to Construct spaces directory')
-  .action(() => run())
+  .action(() => install())
 
 program
   .command('publish')
@@ -129,7 +130,7 @@ space.command('scaffold [name]').alias('new').alias('create')
   .action(async (name, opts) => scaffold(name, opts))
 space.command('build').option('--entry-only').action(async (opts) => build(opts))
 space.command('dev').action(async () => dev())
-space.command('run').action(() => run())
+space.command('install').alias('run').action(() => install())
 space.command('publish').option('-y, --yes').option('--bump <type>')
   .action(async (opts) => publish(opts))
 space.command('validate').action(() => validate())
