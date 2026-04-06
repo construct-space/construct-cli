@@ -32,10 +32,19 @@ async function uploadSource(portalURL: string, token: string, tarballPath: strin
     body: formData,
   })
 
-  const result = await resp.json() as PublishResult
+  const result = await resp.json() as PublishResult & { owner_user_id?: string }
 
   if (resp.status === 401) {
     throw new Error("authentication failed — run 'construct login' to re-authenticate")
+  }
+
+  if (resp.status === 403) {
+    let msg = result.error || 'You are not the owner of this space'
+    if (result.owner_user_id) {
+      msg += `\n  Current owner: ${result.owner_user_id}`
+    }
+    msg += '\n  Fork to a new space_id to publish your own version.'
+    throw new Error(msg)
   }
 
   if (resp.status >= 400) {

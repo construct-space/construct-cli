@@ -61,12 +61,16 @@ export async function graphPush(): Promise<void> {
   const spinner = ora('Registering models...').start()
 
   try {
+    // Include user ID for ownership verification
+    const userID = creds.user?.id || ''
+
     const resp = await fetch(`${graphURL}/api/schemas/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${creds.token}`,
         'X-Space-ID': m.id,
+        'X-Auth-User-ID': userID,
       },
       body: JSON.stringify({
         space_id: m.id,
@@ -76,6 +80,21 @@ export async function graphPush(): Promise<void> {
         manifest: { version: 1, models },
       }),
     })
+
+    if (resp.status === 403) {
+      spinner.fail('Ownership check failed')
+      try {
+        const errBody = await resp.json() as { error?: string; owner_user_id?: string }
+        console.error(chalk.red(`  ${errBody.error || 'You are not the owner of this space'}`))
+        if (errBody.owner_user_id) {
+          console.error(chalk.dim(`  Current owner: ${errBody.owner_user_id}`))
+        }
+        console.error(chalk.dim('  Fork to a new space_id to publish your own version.'))
+      } catch {
+        console.error(chalk.red(`  403: Forbidden — ownership check failed`))
+      }
+      process.exit(1)
+    }
 
     if (!resp.ok) {
       const body = await resp.text()
