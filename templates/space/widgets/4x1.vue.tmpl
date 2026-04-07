@@ -1,7 +1,14 @@
 <script setup lang="ts">
 /**
  * {{.DisplayName}} Summary Widget — 4×1 wide view
+ *
+ * Widgets run inside a closed Shadow DOM sandbox.
+ * Use the injected widgetApi for theme and actions — do not access
+ * window, document, or global stores directly.
  */
+import { inject } from 'vue'
+
+const api = inject<{ theme: { mode: string; vars: Record<string, string> }; space: { id: string; name: string } }>('widgetApi')
 </script>
 
 <template>
