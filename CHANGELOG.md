@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- **Widget templates use sandbox API** — scaffolded widgets now `inject('widgetApi')` instead of accessing globals directly, compatible with the closed Shadow DOM sandbox in Construct
+
 ## [0.9.0] — 2026-04-02
 
 ### Added
