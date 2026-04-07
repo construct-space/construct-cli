@@ -115,7 +115,7 @@ describe('scaffold manifest', () => {
     expect(manifest.description).toBeString()
     expect(manifest.author.name).toBeString()
     expect(manifest.icon).toBeString()
-    expect(manifest.scope).toBe('both')
+    expect(manifest.scope).toBe('app')
     expect(manifest.navigation).toBeDefined()
     expect(manifest.navigation.label).toBe('My Space')
     expect(manifest.navigation.to).toBe('my-space')
