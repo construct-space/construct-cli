@@ -31,7 +31,7 @@ describe('generate', () => {
         name: 'Construct Team',
       },
       icon: 'icon',
-      scope: 'both',
+      scope: 'app',
       navigation: {
         label: 'Canvas',
         icon: 'icon',
