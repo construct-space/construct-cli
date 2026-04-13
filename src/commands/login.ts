@@ -6,6 +6,15 @@ import { openBrowser } from '../lib/utils.js'
 export async function login(options?: { portal?: string }): Promise<void> {
   const portalURL = options?.portal || auth.DEFAULT_PORTAL
 
+  // If the Construct app is signed in on this machine, the CLI piggybacks
+  // on its active profile — no separate CLI login needed.
+  const fromApp = auth.loadFromApp()
+  if (fromApp) {
+    console.log(chalk.green(`Using Construct app profile: ${fromApp.user?.name || fromApp.user?.email}`))
+    console.log(chalk.dim('  To use a different identity, sign out of the app or run `construct logout` after login.'))
+    return
+  }
+
   if (auth.isAuthenticated()) {
     const creds = auth.load()
     const name = creds.user?.name || 'unknown'
