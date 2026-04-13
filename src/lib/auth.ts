@@ -11,10 +11,20 @@ export interface User {
   email: string
 }
 
+export interface Publisher {
+  name: string
+  email: string
+  kind: 'user' | 'org' | 'legacy'
+  userId?: string
+  orgId?: string
+  verified: boolean
+}
+
 export interface Credentials {
   token: string
   portal: string
   user?: User
+  publishers?: Publisher[]
 }
 
 function credentialsPath(): string {

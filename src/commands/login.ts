@@ -84,11 +84,29 @@ export async function login(options?: { portal?: string }): Promise<void> {
     const resp = await fetch(`${portalURL}/api/auth/cli-verify`, {
       headers: { 'Authorization': `Bearer ${token}` },
     })
-    const { user } = await resp.json() as { user: auth.User }
+    const { user, publishers } = await resp.json() as {
+      user: auth.User
+      publishers?: auth.Publisher[]
+    }
 
-    auth.store({ token, portal: portalURL, user })
+    auth.store({ token, portal: portalURL, user, publishers })
     console.log()
     console.log(chalk.green(`Logged in as ${user?.name || 'there'}`))
+
+    // Show active publisher identity so users know which one future
+    // `construct publish` runs target. Legacy rows predate user/org linking.
+    const list = publishers || []
+    if (list.length === 0) {
+      console.log(chalk.yellow('  No publisher yet. Run developer enrollment to publish spaces.'))
+    } else {
+      for (const p of list) {
+        const label =
+          p.kind === 'org' ? chalk.cyan('org') :
+          p.kind === 'user' ? chalk.blue('personal') :
+          chalk.dim('legacy')
+        console.log(chalk.dim(`  Publisher: ${p.name} (${label})`))
+      }
+    }
   } catch (err: any) {
     console.error(chalk.red(`Login failed: ${err.message}`))
     process.exit(1)

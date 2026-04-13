@@ -76,6 +76,7 @@ export interface Hooks {
   postBuild?: string
   preDev?: string
   postDev?: string
+  [k: string]: string | undefined
 }
 
 export interface Widget {

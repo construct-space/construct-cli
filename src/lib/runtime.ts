@@ -37,7 +37,8 @@ export function watchCmd(root: string, _rt: Runtime): ChildProcess {
   return spawn('bun', ['run', 'vite', 'build', '--watch'], { cwd: root, stdio: 'pipe' })
 }
 
-export function runHook(hooks: Record<string, string> | undefined, hookName: string, root: string): void {
-  if (!hooks || !hooks[hookName]) return
-  execSync(hooks[hookName], { cwd: root, stdio: 'inherit' })
+export function runHook(hooks: Record<string, string | undefined> | undefined, hookName: string, root: string): void {
+  const cmd = hooks?.[hookName]
+  if (!cmd) return
+  execSync(cmd, { cwd: root, stdio: 'inherit' })
 }
