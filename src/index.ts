@@ -10,6 +10,7 @@ import { validate } from './commands/validate.js'
 import { check } from './commands/check.js'
 import { clean } from './commands/clean.js'
 import { login, logout } from './commands/login.js'
+import { whoami } from './commands/whoami.js'
 import { update } from './commands/update.js'
 import { graphInit } from './commands/graph/init.js'
 import { generate } from './commands/graph/generate.js'
@@ -85,6 +86,12 @@ program
   .command('logout')
   .description('Sign out')
   .action(() => logout())
+
+program
+  .command('whoami')
+  .alias('status')
+  .description('Show the active profile, its source (app or CLI), and linked publishers')
+  .action(() => whoami())
 
 program
   .command('update')

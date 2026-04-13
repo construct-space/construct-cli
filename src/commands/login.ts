@@ -123,6 +123,20 @@ export async function login(options?: { portal?: string }): Promise<void> {
 }
 
 export function logout(): void {
+  const wasCli = auth.isAuthenticated()
   auth.clear()
-  console.log(chalk.green('Logged out.'))
+  if (wasCli) {
+    console.log(chalk.green('Logged out of CLI credentials.'))
+  } else {
+    console.log(chalk.dim('No CLI credentials to clear.'))
+  }
+
+  // If the desktop app still has an active profile, the CLI will keep using
+  // it on the next command. Make that explicit so the user isn't surprised.
+  const appStill = auth.loadFromApp()
+  if (appStill) {
+    console.log()
+    console.log(chalk.yellow('Note: the Construct app is still signed in as ') + chalk.white(appStill.user?.name || appStill.user?.email || ''))
+    console.log(chalk.dim('  The CLI will continue to use the app profile. Sign out of the app to fully disconnect.'))
+  }
 }
