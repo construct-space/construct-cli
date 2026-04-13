@@ -79,6 +79,28 @@ export async function publish(options?: { yes?: boolean; bump?: string }): Promi
     process.exit(1)
   }
 
+  // Show which publisher this upload will land under. The backend resolves
+  // the Publisher row from the CLI token, but surfacing it here lets the
+  // developer catch "oops, I'm on the wrong identity" before pushing.
+  const publishers = creds.publishers || []
+  if (publishers.length === 0) {
+    console.log(chalk.yellow('  No publisher linked to this session. The upload will likely be rejected.'))
+    console.log(chalk.dim("  Run 'construct login' after enrolling at developer.construct.space."))
+  } else {
+    const primary = publishers[0]
+    const kindLabel =
+      primary.kind === 'org' ? chalk.cyan('org') :
+      primary.kind === 'user' ? chalk.blue('personal') :
+      chalk.dim('legacy')
+    console.log(chalk.dim(`  Publishing as ${primary.name} (${kindLabel})`))
+    if (publishers.length > 1 && !yes) {
+      const proceed = await confirm({
+        message: `You have ${publishers.length} publisher identities. Publish under ${primary.name}?`,
+      })
+      if (!proceed) { console.log('Cancelled.'); return }
+    }
+  }
+
   // Check uncommitted changes
   const status = gitSafe(root, 'status', '--porcelain')
   if (status) {
