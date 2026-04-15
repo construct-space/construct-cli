@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'fs'
+import { existsSync, readFileSync, cpSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import { createHash } from 'crypto'
 import chalk from 'chalk'
@@ -6,6 +6,7 @@ import { watch } from 'chokidar'
 import * as manifest from '../lib/manifest.js'
 import { writeEntry } from '../lib/entry.js'
 import { detect, ensureDeps, watchCmd } from '../lib/runtime.js'
+import { spaceDir } from '../lib/appdir.js'
 
 export function getEntryWatchPaths(root: string): string[] {
   return [
@@ -84,7 +85,16 @@ export async function dev(): Promise<void> {
       builtAt: new Date().toISOString(),
     })
 
-    console.log(chalk.green(`Built → dist/ (${(bundleData.length / 1024).toFixed(1)} KB)`))
+    // Install to profile spaces dir so the running app picks up the change
+    try {
+      const installDir = spaceDir(m.id)
+      mkdirSync(installDir, { recursive: true })
+      cpSync(distDir, installDir, { recursive: true })
+      console.log(chalk.green(`Built + installed → ${installDir} (${(bundleData.length / 1024).toFixed(1)} KB)`))
+    } catch (err: any) {
+      console.log(chalk.green(`Built → dist/ (${(bundleData.length / 1024).toFixed(1)} KB)`))
+      console.log(chalk.yellow(`  Install failed: ${err.message}`))
+    }
   })
 
   console.log(chalk.green('Watching for changes... (Ctrl+C to stop)'))

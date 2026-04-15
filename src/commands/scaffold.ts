@@ -4,6 +4,7 @@ import chalk from 'chalk'
 import { input } from '@inquirer/prompts'
 import { toDisplayName } from '../lib/utils.js'
 import { detect, ensureDeps } from '../lib/runtime.js'
+import { EMBEDDED_TEMPLATES } from '../lib/embedded-templates.js'
 
 const nameRegex = /^[a-z][a-z0-9-]*$/
 
@@ -31,12 +32,19 @@ function render(template: string, data: TemplateData): string {
 }
 
 function writeTemplate(templateDir: string, tmplName: string, outPath: string, data: TemplateData): void {
+  let content: string | undefined
+
+  // Prefer filesystem (dev mode); fall back to embedded (compiled binary)
   const tmplPath = join(templateDir, tmplName)
-  if (!existsSync(tmplPath)) {
+  if (existsSync(tmplPath)) {
+    content = readFileSync(tmplPath, 'utf-8')
+  } else if (EMBEDDED_TEMPLATES[tmplName] !== undefined) {
+    content = EMBEDDED_TEMPLATES[tmplName]
+  } else {
     console.warn(chalk.yellow(`Template not found: ${tmplName}`))
     return
   }
-  const content = readFileSync(tmplPath, 'utf-8')
+
   mkdirSync(dirname(outPath), { recursive: true })
   writeFileSync(outPath, render(content, data))
 }

@@ -1,6 +1,6 @@
 {
   "name": "@construct-space/cli",
-  "version": "1.1.11",
+  "version": "1.1.12",
   "description": "Construct CLI — scaffold, build, develop, and publish spaces",
   "type": "module",
   "bin": {
@@ -16,7 +16,7 @@
     "templates"
   ],
   "scripts": {
-    "build": "bun build src/index.ts --outdir dist --target bun --format esm && cp -r templates dist/",
+    "build": "bun scripts/embed-templates.ts && bun build src/index.ts --outdir dist --target bun --format esm && cp -r templates dist/",
     "dev": "bun run src/index.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
