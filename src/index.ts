@@ -79,6 +79,7 @@ program
   .command('login')
   .description('Authenticate with Construct')
   .option('--portal <url>', 'Portal URL')
+  .option('--token <token>', 'Authenticate with a token directly (skip desktop profile picker)')
   .action(async (opts) => login(opts))
 
 program
