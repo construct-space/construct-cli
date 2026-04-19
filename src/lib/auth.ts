@@ -1,6 +1,6 @@
-import { readFileSync, writeFileSync, mkdirSync, unlinkSync, existsSync } from 'fs'
+import { readFileSync, writeFileSync, mkdirSync, unlinkSync, existsSync, readdirSync, statSync } from 'fs'
 import { join, dirname } from 'path'
-import { dataDir } from './appdir.js'
+import { dataDir, profilesDir } from './appdir.js'
 
 const CREDENTIALS_FILE = 'credentials.json'
 export const DEFAULT_PORTAL = 'https://my.construct.space/api/developer'
@@ -15,6 +15,55 @@ export interface Credentials {
   token: string
   portal: string
   user?: User
+}
+
+export interface DesktopProfile {
+  id: string // directory name (uuid or "org:<uuid>")
+  token: string
+  user?: {
+    id?: string
+    name?: string
+    email?: string
+    username?: string
+  }
+  updatedAt?: string
+  authenticated?: boolean
+}
+
+// listDesktopProfiles scans the desktop app's profiles dir for auth.json
+// files. Each profile dir corresponds to a signed-in user or org. Returns
+// only profiles that are currently authenticated.
+export function listDesktopProfiles(): DesktopProfile[] {
+  const dir = profilesDir()
+  if (!existsSync(dir)) return []
+
+  const results: DesktopProfile[] = []
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry)
+    try {
+      if (!statSync(full).isDirectory()) continue
+      const authPath = join(full, 'auth.json')
+      if (!existsSync(authPath)) continue
+      const data = JSON.parse(readFileSync(authPath, 'utf-8')) as {
+        user?: DesktopProfile['user']
+        token?: string
+        authenticated?: boolean
+        updated_at?: string
+      }
+      if (!data.token) continue
+      if (data.authenticated !== undefined && !data.authenticated) continue
+      results.push({
+        id: entry,
+        token: data.token,
+        user: data.user,
+        updatedAt: data.updated_at,
+        authenticated: true,
+      })
+    } catch {
+      // Ignore malformed entries
+    }
+  }
+  return results
 }
 
 function credentialsPath(): string {

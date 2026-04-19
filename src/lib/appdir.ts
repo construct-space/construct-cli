@@ -24,6 +24,10 @@ export function spacesDir(): string {
   return join(dataDir(), 'spaces')
 }
 
+export function profilesDir(): string {
+  return join(dataDir(), 'profiles')
+}
+
 export function spaceDir(spaceId: string): string {
   return join(spacesDir(), spaceId)
 }

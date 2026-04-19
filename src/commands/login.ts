@@ -1,11 +1,8 @@
-import { createServer } from 'http'
 import chalk from 'chalk'
+import { select } from '@inquirer/prompts'
 import * as auth from '../lib/auth.js'
-import { openBrowser } from '../lib/utils.js'
 
-export async function login(options?: { portal?: string }): Promise<void> {
-  const portalURL = options?.portal || auth.DEFAULT_PORTAL
-
+export async function login(_options?: { portal?: string }): Promise<void> {
   if (auth.isAuthenticated()) {
     const creds = auth.load()
     const name = creds.user?.name || 'unknown'
@@ -14,85 +11,47 @@ export async function login(options?: { portal?: string }): Promise<void> {
     return
   }
 
-  // Find free port
-  const server = createServer()
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
-  const port = (server.address() as any).port
-  server.close()
+  const profiles = auth.listDesktopProfiles()
 
-  const callbackURL = `http://localhost:${port}/callback`
-  const loginURL = `${portalURL}/auth/cli-login?callback=${encodeURIComponent(callbackURL)}`
-
-  const tokenPromise = new Promise<string>((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      srv.close()
-      reject(new Error('Login timed out. Try again.'))
-    }, 5 * 60 * 1000)
-
-    const srv = createServer((req, res) => {
-      const url = new URL(req.url!, `http://localhost:${port}`)
-      if (url.pathname !== '/callback') { res.end(); return }
-
-      const error = url.searchParams.get('error')
-      const token = url.searchParams.get('token')
-
-      res.setHeader('Content-Type', 'text/html')
-
-      if (error) {
-        res.end(`<html><body style="font-family:system-ui;text-align:center;padding:60px">
-          <h2 style="color:#EF4444">Login Failed</h2><p>${error}</p>
-          <p style="color:#6B7280">You can close this window.</p></body></html>`)
-        clearTimeout(timeout)
-        srv.close()
-        reject(new Error(error))
-        return
-      }
-
-      if (!token) {
-        res.end(`<html><body style="font-family:system-ui;text-align:center;padding:60px">
-          <h2 style="color:#EF4444">Login Failed</h2><p>No token received.</p>
-          <p style="color:#6B7280">You can close this window.</p></body></html>`)
-        clearTimeout(timeout)
-        srv.close()
-        reject(new Error('No token received'))
-        return
-      }
-
-      res.end(`<html><body style="font-family:system-ui;text-align:center;padding:60px">
-        <h2 style="color:#10B981">Logged In!</h2>
-        <p>You can close this window and return to your terminal.</p></body></html>`)
-      clearTimeout(timeout)
-      srv.close()
-      resolve(token)
-    })
-
-    srv.listen(port, '127.0.0.1')
-  })
-
-  console.log(chalk.blue('Opening browser to log in...'))
-  console.log(chalk.dim('  If the browser doesn\'t open, visit:'))
-  console.log(chalk.dim(`  ${loginURL}`))
-  console.log()
-
-  openBrowser(loginURL)
-  console.log(chalk.dim('  Waiting for authentication...'))
-
-  try {
-    const token = await tokenPromise
-
-    // Verify token
-    const resp = await fetch(`${portalURL}/auth/cli-verify`, {
-      headers: { 'Authorization': `Bearer ${token}` },
-    })
-    const { user } = await resp.json() as { user: auth.User }
-
-    auth.store({ token, portal: portalURL, user })
-    console.log()
-    console.log(chalk.green(`Logged in as ${user?.name || 'there'}`))
-  } catch (err: any) {
-    console.error(chalk.red(`Login failed: ${err.message}`))
+  if (profiles.length === 0) {
+    console.error(chalk.red('No signed-in profiles found.'))
+    console.error(chalk.dim('  Sign in with the Construct desktop app, then re-run this command.'))
     process.exit(1)
   }
+
+  let picked = profiles[0]!
+  if (profiles.length > 1) {
+    picked = await select({
+      message: 'Choose a profile to use:',
+      choices: profiles.map((p) => ({
+        name: formatLabel(p),
+        value: p,
+      })),
+    })
+  }
+
+  const user: auth.User = {
+    id: picked.user?.id || picked.id,
+    name: picked.user?.name || picked.user?.username || picked.id,
+    email: picked.user?.email || '',
+  }
+
+  auth.store({
+    token: picked.token,
+    portal: auth.DEFAULT_PORTAL,
+    user,
+  })
+
+  console.log(chalk.green(`Logged in as ${user.name}`))
+  if (user.email) console.log(chalk.dim(`  ${user.email}`))
+  console.log(chalk.dim(`  profile: ${picked.id}`))
+}
+
+function formatLabel(p: auth.DesktopProfile): string {
+  const name = p.user?.name || p.user?.username || p.id
+  const email = p.user?.email
+  const kind = p.id.startsWith('org:') ? ' [org]' : ''
+  return email ? `${name}${kind}  ${chalk.dim(email)}` : `${name}${kind}  ${chalk.dim(p.id)}`
 }
 
 export function logout(): void {
