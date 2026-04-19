@@ -53,6 +53,11 @@ export function loadCreds(): auth.Credentials {
 /**
  * Perform an authenticated HTTP request against the graph gateway. Throws
  * with the response body on non-2xx so callers can surface errors uniformly.
+ *
+ * Note: we deliberately do NOT forward X-Auth-Org-ID from the client. The
+ * graph service strips every X-Auth-* header on the way in and attests them
+ * from the bearer token, so sending one is both useless and a sign of an
+ * attempted spoof. Org context is derived server-side from /me/scope.
  */
 export async function graphRequest<T = unknown>(opts: GraphReqOptions): Promise<T> {
   const creds = loadCreds()
@@ -60,8 +65,6 @@ export async function graphRequest<T = unknown>(opts: GraphReqOptions): Promise<
     Authorization: `Bearer ${creds.token}`,
     'Content-Type': 'application/json',
   }
-  if (creds.user?.id) headers['X-Auth-User-ID'] = creds.user.id
-  if (opts.orgId) headers['X-Auth-Org-ID'] = opts.orgId
 
   const resp = await fetch(graphBaseURL() + opts.path, {
     method: opts.method || 'GET',
@@ -88,16 +91,12 @@ export async function graphRequest<T = unknown>(opts: GraphReqOptions): Promise<
 }
 
 /**
- * Require an org id or exit. Bundle + install + distribution commands all
- * need this — it's the same copy in every spot otherwise.
+ * requireOrgId was the old stern gate for bundle/install/distribution paths.
+ * Now that graph attests org context from the bearer token, the CLI no
+ * longer needs one — we pass the explicit id (if any) through opts.orgId
+ * purely as a courtesy and let the server accept / reject. Kept as a
+ * pass-through so existing callers don't have to change shape.
  */
 export function requireOrgId(explicit?: string): string {
-  const org = resolveOrgId(explicit)
-  if (!org) {
-    throw new Error(
-      'org context required. Pass --org <id> or set CONSTRUCT_ORG_ID. ' +
-        'Find your org id on the profile page or via accounts /api/me/scope.',
-    )
-  }
-  return org
+  return resolveOrgId(explicit)
 }

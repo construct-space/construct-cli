@@ -92,6 +92,12 @@ program
   .description('Update the CLI to the latest version')
   .action(() => update())
 
+program
+  .command('whoami')
+  .alias('status')
+  .description('Show the signed-in user + current org scope')
+  .action(async () => (await import('./commands/whoami.js')).whoami())
+
 // Graph commands
 const graph = program
   .command('graph')
