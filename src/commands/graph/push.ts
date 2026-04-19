@@ -66,20 +66,32 @@ export async function graphPush(): Promise<void> {
     // Include user ID for ownership verification
     const userID = creds.user?.id || ''
 
+    // Carry bundle_id + imports from space.manifest.json's "graph" section
+    // through to the register call. Without this, setting bundle_id in the
+    // manifest is silently dropped and cross-space imports never persist.
+    const dataManifest: Record<string, unknown> = { version: 1, models }
+    if (m.graph?.bundle_id) dataManifest.bundle_id = m.graph.bundle_id
+    if (m.graph?.imports && m.graph.imports.length > 0) dataManifest.imports = m.graph.imports
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${creds.token}`,
+      'X-Space-ID': m.id,
+      'X-Auth-User-ID': userID,
+    }
+    // Bundle attachment requires org context on the backend (ownership check).
+    const pushOrgID = process.env.CONSTRUCT_ORG_ID
+    if (pushOrgID) headers['X-Auth-Org-ID'] = pushOrgID
+
     const resp = await fetch(`${graphURL}/api/schemas/register`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${creds.token}`,
-        'X-Space-ID': m.id,
-        'X-Auth-User-ID': userID,
-      },
+      headers,
       body: JSON.stringify({
         space_id: m.id,
         space_name: m.name,
         project_id: 'default',
         version: m.version || '0.0.1',
-        manifest: { version: 1, models },
+        manifest: dataManifest,
       }),
     })
 

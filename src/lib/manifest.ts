@@ -98,6 +98,26 @@ export interface ActionDef {
   params?: Record<string, ActionParam>
 }
 
+export interface ImportSpec {
+  from: string
+  models: string[]
+}
+
+/**
+ * Data-layer configuration inside space.manifest.json.
+ *
+ * `bundle_id` attaches the space to a publisher bundle (e.g. kanban-suite).
+ * `imports` re-uses models from sibling spaces in the same bundle — validated
+ * at publish time; cross-bundle imports are rejected.
+ *
+ * Both fields pass through verbatim to the graph service on `construct graph
+ * push`. Leave unset for standalone spaces.
+ */
+export interface GraphSpec {
+  bundle_id?: string
+  imports?: ImportSpec[]
+}
+
 export interface SpaceManifest {
   id: string
   name: string
@@ -123,6 +143,8 @@ export interface SpaceManifest {
   widgets?: Widget[]
   /** Inline action metadata for lazy loading — injected by build from src/actions.ts */
   actions?: string | Record<string, ActionDef>
+  /** Optional data-layer config: bundle membership + cross-space imports. */
+  graph?: GraphSpec
 }
 
 export interface BuildMeta {
