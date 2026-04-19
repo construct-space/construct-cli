@@ -16,9 +16,18 @@ export interface GraphReqOptions {
   orgId?: string // caller's org — required for bundle/install/distribution ops
 }
 
-/** Base URL for the graph service, overridable via GRAPH_URL for local dev. */
+/**
+ * Base URL for the graph service. Defaults to direct (graph.construct.space)
+ * rather than my.construct.space's /api/graph gateway because the CLI
+ * authenticates with bearer tokens — we don't need the gateway's session
+ * cookie handling, and calling direct avoids the path-prefix rewrite the
+ * gateway does (`/api/graph/*` → `${GRAPH}/api/*`), which would require
+ * every command's path to know whether it's going through the gateway.
+ *
+ * Override with GRAPH_URL for local dev (e.g. http://localhost:8080).
+ */
 export function graphBaseURL(): string {
-  return process.env.GRAPH_URL || 'https://my.construct.space/api/graph'
+  return process.env.GRAPH_URL || 'https://graph.construct.space'
 }
 
 /**
