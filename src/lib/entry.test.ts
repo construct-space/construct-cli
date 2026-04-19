@@ -19,7 +19,8 @@ describe('generate', () => {
     const root = mkdtempSync(join(tmpdir(), 'construct-entry-'))
     tempDirs.push(root)
 
-    mkdirSync(join(root, 'src'), { recursive: true })
+    mkdirSync(join(root, 'src', 'pages'), { recursive: true })
+    writeFileSync(join(root, 'src', 'pages', 'index.vue'), '<template><div /></template>\n')
     writeFileSync(join(root, 'src', 'actions.ts'), 'export const actions = {}\n')
 
     const manifest: SpaceManifest = {

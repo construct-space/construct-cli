@@ -56,8 +56,10 @@ export async function graphPush(): Promise<void> {
     process.exit(1)
   }
 
-  // Register schema with Graph service
-  const graphURL = process.env.GRAPH_URL || 'https://graph.construct.space'
+  // Register schema with Graph service via the unified my.construct.space gateway.
+  // The gateway proxies /api/graph/* → ${GRAPH_UPSTREAM}/api/*, so the upstream
+  // path stays /api/schemas/register.
+  const graphURL = process.env.GRAPH_URL || 'https://my.construct.space/api/graph'
   const spinner = ora('Registering models...').start()
 
   try {

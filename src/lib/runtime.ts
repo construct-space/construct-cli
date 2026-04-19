@@ -1,6 +1,7 @@
 import { execSync, spawn, type ChildProcess } from 'child_process'
 import { existsSync } from 'fs'
 import { join } from 'path'
+import type { Hooks } from './manifest.js'
 
 export interface Runtime {
   name: 'bun'
@@ -37,7 +38,8 @@ export function watchCmd(root: string, _rt: Runtime): ChildProcess {
   return spawn('bun', ['run', 'vite', 'build', '--watch'], { cwd: root, stdio: 'pipe' })
 }
 
-export function runHook(hooks: Record<string, string> | undefined, hookName: string, root: string): void {
-  if (!hooks || !hooks[hookName]) return
-  execSync(hooks[hookName], { cwd: root, stdio: 'inherit' })
+export function runHook(hooks: Hooks | undefined, hookName: keyof Hooks, root: string): void {
+  const cmd = hooks?.[hookName]
+  if (!cmd) return
+  execSync(cmd, { cwd: root, stdio: 'inherit' })
 }

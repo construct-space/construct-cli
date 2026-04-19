@@ -30,7 +30,7 @@ export async function graphMigrate(options?: { apply?: boolean }): Promise<void>
     process.exit(1)
   }
 
-  const graphURL = process.env.GRAPH_URL || 'https://graph.construct.space'
+  const graphURL = process.env.GRAPH_URL || 'https://my.construct.space/api/graph'
 
   // Get current schema from server
   const spinner = ora('Fetching current schema...').start()
