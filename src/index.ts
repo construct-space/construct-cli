@@ -15,8 +15,13 @@ import { graphInit } from './commands/graph/init.js'
 import { generate } from './commands/graph/generate.js'
 import { graphPush } from './commands/graph/push.js'
 import { graphMigrate } from './commands/graph/migrate.js'
+import pkg from '../package.json' with { type: 'json' }
 
-export const VERSION = '1.3.1'
+// Single source of truth. Bun inlines this JSON import at build time, so
+// the published bundle carries the version string baked in — no runtime
+// file reads — and we can never again ship a CLI whose --version lies
+// because someone forgot to update a hardcoded constant.
+export const VERSION: string = pkg.version
 
 const program = new Command()
 
