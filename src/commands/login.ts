@@ -21,7 +21,7 @@ export async function login(options?: { portal?: string }): Promise<void> {
   server.close()
 
   const callbackURL = `http://localhost:${port}/callback`
-  const loginURL = `${portalURL}/api/auth/cli-login?callback=${encodeURIComponent(callbackURL)}`
+  const loginURL = `${portalURL}/auth/cli-login?callback=${encodeURIComponent(callbackURL)}`
 
   const tokenPromise = new Promise<string>((resolve, reject) => {
     const timeout = setTimeout(() => {
@@ -81,7 +81,7 @@ export async function login(options?: { portal?: string }): Promise<void> {
     const token = await tokenPromise
 
     // Verify token
-    const resp = await fetch(`${portalURL}/api/auth/cli-verify`, {
+    const resp = await fetch(`${portalURL}/auth/cli-verify`, {
       headers: { 'Authorization': `Bearer ${token}` },
     })
     const { user } = await resp.json() as { user: auth.User }

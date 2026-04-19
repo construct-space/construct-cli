@@ -3,7 +3,7 @@ import { join, dirname } from 'path'
 import { dataDir } from './appdir.js'
 
 const CREDENTIALS_FILE = 'credentials.json'
-export const DEFAULT_PORTAL = 'https://developer.construct.space'
+export const DEFAULT_PORTAL = 'https://my.construct.space/api/developer'
 
 export interface User {
   id: string

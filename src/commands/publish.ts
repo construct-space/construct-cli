@@ -26,7 +26,7 @@ async function uploadSource(portalURL: string, token: string, tarballPath: strin
   const blob = new Blob([fileData])
   formData.append('source', blob, basename(tarballPath))
 
-  const resp = await fetch(`${portalURL}/api/publish`, {
+  const resp = await fetch(`${portalURL}/publish`, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${token}` },
     body: formData,
