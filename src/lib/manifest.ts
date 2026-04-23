@@ -125,7 +125,7 @@ export interface SpaceManifest {
   description: string
   author: Author
   icon: string
-  scope: 'app' | 'project' | 'org' | 'any'
+  scope: 'app' | 'project' | 'org'
   minConstructVersion?: string
   navigation: Navigation
   pages: Page[]
@@ -165,7 +165,7 @@ export function validate(m: SpaceManifest): string[] {
   if (!m.description) errors.push('description: must be a string')
   if (!m.author?.name) errors.push('author: must be an object with a name')
   if (!m.icon) errors.push('icon: must be a string')
-  if (!['app', 'project', 'org', 'any'].includes(m.scope)) errors.push('scope: must be "app", "project", "org", or "any"')
+  if (!['app', 'project', 'org'].includes(m.scope)) errors.push('scope: must be "app", "project", or "org"')
   if (!m.pages?.length) errors.push('pages: must be a non-empty array')
   if (!m.navigation?.label) errors.push('navigation: must be an object')
   return errors
