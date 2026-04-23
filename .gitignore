@@ -2,3 +2,4 @@ node_modules/
 dist/
 *.lockb
 .vite/
+release.sh
