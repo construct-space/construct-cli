@@ -119,6 +119,7 @@ export async function scaffold(nameArg?: string, options?: ScaffoldOptions): Pro
     'eslint.config.js.tmpl': join(name, 'eslint.config.js'),
     'gitignore.tmpl': join(name, '.gitignore'),
     'readme.md.tmpl': join(name, 'README.md'),
+    'construct.md.tmpl': join(name, 'CONSTRUCT.md'),
     'widgets/2x1.vue.tmpl': join(name, 'widgets', 'summary', '2x1.vue'),
     'widgets/4x1.vue.tmpl': join(name, 'widgets', 'summary', '4x1.vue'),
     'actions.ts.tmpl': join(name, 'src', 'actions.ts'),

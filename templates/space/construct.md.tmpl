@@ -1,0 +1,238 @@
+---
+id: construct-stack
+name: Construct Stack Guide
+description: How to build and extend a Construct space — CLI, UI, SDK, Graph, manifest, agent actions
+trigger: construct|space|graph|ui|sdk|manifest|action
+category: skill
+tools: [read_file, list_dir, glob, grep, write_file, edit_file]
+---
+
+# Construct.md — agent guide for `{{.DisplayName}}`
+
+This file briefs an AI coding agent on the Construct stack so it can build, extend, and ship this space without external lookups.
+
+---
+
+## Stack at a glance
+
+| Layer | Package | Purpose |
+|-------|---------|---------|
+| UI | `@construct-space/ui` | Vue 3 component library |
+| Host | `@construct-space/sdk` | App composables (org, members, toast, auth) |
+| Data | `@construct-space/graph` | Multi-tenant typed data layer |
+| Icons | `lucide-vue-next` | Icon set |
+| Tooling | `@construct-space/cli` | Build / dev / publish |
+
+All four are **host-provided externals** — import normally, never bundle. Vite externalises them via `vite.config.ts`.
+
+---
+
+## Layout
+
+```
+{{.Name}}/
+  space.manifest.json     scope, pages, toolbar, agent, widgets, actions
+  src/
+    entry.ts              auto-generated; do not hand-edit
+    actions.ts            agent-callable actions (space_run_action)
+    pages/                filesystem routing (e.g. settings.vue → /settings)
+    components/           local Vue components
+    composables/          local composables (use* convention)
+    models/               graph models (defineModel)
+  agent/
+    config.md             agent system prompt, tool whitelist, max iterations
+    skills/               scoped skills loaded with the agent
+    hooks/safety.json     tool-call interception rules
+  widgets/                home-screen widgets (run inside Shadow DOM sandbox)
+```
+
+---
+
+## CLI
+
+```bash
+construct dev                  hot-reload dev (regenerates entry.ts on change)
+construct build                production build → dist/
+construct check                manifest + typecheck + lint
+construct install              install to active profile
+construct publish              publish to registry (requires auth)
+construct graph push           register models with graph backend
+construct graph install <id>   install a published space for current org
+```
+
+---
+
+## Manifest essentials
+
+```jsonc
+{
+  "id": "{{.ID}}",
+  "scope": "app | project | org",   // org = multi-tenant per organization
+  "minConstructVersion": "0.7.0",
+  "pages": [{ "path": "", "label": "Home", "default": true }],
+  "toolbar": [{ "id": "...", "icon": "...", "action": "createX" }],
+  "agent": "agent/config.md",
+  "skills": ["agent/skills/default.md"],
+  "actions": "src/actions.ts",
+  "widgets": [{ "id": "summary", "defaultSize": "4x1", "sizes": {...} }]
+}
+```
+
+`scope: 'org'` makes everything multi-tenant — graph schemas auto-partition per org. Use `useOrg()` to read current org context.
+
+---
+
+## `@construct-space/ui` — component cheatsheet
+
+All exported from the package root:
+
+**Layout**: `Card` (slots: header/accessory/default/footer/footer-end; variants: default/outline/muted; modifiers: hoverable/interactive), `SplitPane`, `ScrollArea`, `Separator`, `PanelSection`, `DashboardPanel`
+
+**Inputs**: `Input`, `Textarea`, `Select` (options: `{label, value}[]`), `MultiSelect`, `Checkbox`, `Switch`, `RadioGroup`, `DatePicker`, `ColorPicker`, `FileInput`, `Slider`, `Autocomplete`, `FormField` (label/hint wrapper)
+
+**Display**: `Badge` (color: primary|neutral|success|warning|error|info; variant: solid|soft|subtle|outline), `Chip`, `Avatar` (`fallback` shows text — pass initials), `Empty`, `Skeleton`, `Progress`, `Tooltip`, `Kbd`, `Alert`, `Notification`/`Toast`
+
+**Actions**: `Button` (variant: solid|ghost|outline; color: primary|neutral|error|...; size: xs|sm|md|lg), `Dropdown`, `DropdownMenu`, `ContextMenu`, `Popover`, `ToggleGroup` (segmented control)
+
+**Overlays**: `Modal` (`v-model:open`, slots: header/body/footer), `Slideover`, `Drawer`, `ConfirmationModal` (`@confirm`, `@cancel`), `Pagination`
+
+**Data**: `Table` (`columns: TableColumn[]`, `rows`, `selectable`, `striped`, `stickyHeader`, slots: `cell-{key}`, `header-{key}`, `empty`), `Tree`, `Timeline`, `Tabs`, `Tab`, `Accordion`, `Calendar`, `Breadcrumbs`
+
+**Composables**: `useNotification`, `notify`, `useAuth`, `useTheme`, `useClipboard`, `useMediaQuery`, `useFormValidation`, `useKeyboard`/`useHotkey`, `useClickOutside`, `useEscapeKey`, `useLocalStorage`, `useAsync`, `useDebounce`/`useThrottle`, `useToggle`, `useSearch`, `useIntersectionObserver`
+
+```vue
+<script setup lang="ts">
+import { Card, Button, Modal, Badge } from '@construct-space/ui'
+const open = ref(false)
+</script>
+<template>
+  <Card title="Hello" hoverable>
+    <Badge color="success" variant="subtle" label="Live" />
+    <template #footer-end>
+      <Button variant="solid" size="sm" @click="open = true">Open</Button>
+    </template>
+  </Card>
+  <Modal v-model:open="open" title="Demo">…</Modal>
+</template>
+```
+
+---
+
+## `@construct-space/sdk` — host composables
+
+```ts
+import { useOrg, useOrgMembers, useToast, useAuth } from '@construct-space/sdk'
+
+const { orgId, isOrg, org } = useOrg()           // current org context (reactive)
+const { members } = useOrgMembers()              // [{ user_id, name, email, role }, ...]
+const toast = useToast()                         // toast.success(...), toast.error(...)
+const { user, isAuthenticated, logout } = useAuth()
+```
+
+Use these for org-aware UX (assignee pickers, "shared with N" badges, avatars, member lookups).
+
+---
+
+## `@construct-space/graph` — data layer
+
+Define typed models, get a typed reactive client, multi-tenant by default.
+
+```ts
+// src/models/Task.ts
+import { defineModel, field, access } from '@construct-space/graph'
+
+export const Task = defineModel('task', {
+  title:       field.string().required(),
+  description: field.string(),
+  priority:    field.string(),
+  due_date:    field.date(),
+  position:    field.int(),
+  labels:      field.json(),
+  assignee_id: field.string().index(),
+}, {
+  scope: 'org',                          // partitions schema per organization
+  access: {
+    read:   access.authenticated(),
+    create: access.authenticated(),
+    update: access.authenticated(),
+    delete: access.owner(),
+  },
+})
+```
+
+```ts
+// src/composables/useTasks.ts
+import { useGraph } from '@construct-space/graph'
+import { Task } from '../models'
+
+const tasks = useGraph(Task)
+await tasks.find({ where: { priority: 'high' }, orderBy: { position: 'asc' }, limit: 50 })
+await tasks.create({ title: 'Ship', position: 0 })
+await tasks.update(id, { position: 1 })
+await tasks.remove(id)
+```
+
+**Field types**: `string`, `int`, `number`, `boolean`, `date`, `json`, `enum([...])`. Chain `.required()`, `.index()`, `.unique()`, `.default(v)`.
+
+**Access helpers**: `authenticated()`, `owner()`, `admin()`, `member()`. `member()` requires org context — use `authenticated()` for org-scoped models that allow any logged-in member.
+
+**Scopes**:
+- `app` — single shared schema (rare)
+- `org` — partitioned by organization (most product spaces)
+- `project` — partitioned by project (dev-tooling spaces)
+
+**Push models to backend after editing**: `construct graph push`.
+
+### Pitfalls
+
+- **`field.json()` columns** must receive a JSON-stringified value on write: `labels: JSON.stringify(arr)`. On read, parse back if it returns a string. Sending a JS array directly triggers `column is of type jsonb but expression is of type record`.
+- **Topological sort on push**: avoid `relation.belongsTo()` if push fails — use a `field.string()` foreign-key column instead and join manually in composables.
+- **Lazy provisioning**: first query for a new tenant auto-creates the schema; expect a one-time slower request.
+
+---
+
+## Actions (agent surface)
+
+`src/actions.ts` exports an `actions` object — each entry becomes an agent-callable tool via `space_run_action`.
+
+```ts
+export const actions = {
+  createTask: {
+    description: 'Create a task',
+    params: {
+      title: { type: 'string', required: true },
+      priority: { type: 'string', required: false },
+    },
+    run: async (p: any) => ({ task: await tasks.create(p) }),
+  },
+}
+```
+
+The agent (configured in `agent/config.md`) calls `space_list_actions` then `space_run_action`. Keep descriptions tight and specific — they're the only docstring the agent sees.
+
+---
+
+## Drag and drop (HTML5)
+
+Tauri intercepts native drag-drop by default. The Construct host sets `dragDropEnabled: false` so HTML5 events fire normally — use `draggable="true"`, `@dragstart`, `@dragover.prevent`, `@drop`. No extra deps required; reach for `vuedraggable` only if reordering needs auto-scroll/animation.
+
+---
+
+## Conventions
+
+- **Imports**: `@construct-space/*` packages always external. Local imports use relative paths (no `@/` alias unless you add one).
+- **Composables**: `use*` prefix, keep in `src/composables/`.
+- **Pages**: filename = route path. `index.vue` → `/`, `settings.vue` → `/settings`, `[id].vue` → param.
+- **Styling**: Tailwind utilities + CSS vars `--app-foreground`, `--app-background`, `--app-muted`, `--app-border`, `--app-accent`. Don't hard-code colors; the host themes via these variables.
+- **Comments**: explain *why*, not *what*. Skip TODOs in committed code.
+- **No emojis** in source unless the user requests them.
+
+---
+
+## Build pipeline reminder
+
+`construct build` writes:
+- `dist/space-{{.ID}}.iife.js` — the bundled space
+- `dist/manifest.json` — manifest + `build` block (checksum, size, **`hostApiVersion`**, builtAt)
+
+The runtime SpaceLoader compares `hostApiVersion` to its own; mismatches log a warning. Bump the CLI to keep them aligned.
