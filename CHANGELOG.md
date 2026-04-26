@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-04-26
+
+### Added
+- **`HOST_API_VERSION = '0.5.0'`** — centralized in `lib/manifest.ts`; stamped into every built `dist/manifest.json`. Replaces the hardcoded `0.2.0` previously emitted by both `build` and `dev`, eliminating SpaceLoader version-mismatch warnings against the current host
+- **`CONSTRUCT.md` template** — scaffolded spaces now ship with a root-level skill-formatted brief covering the full stack (CLI, manifest, `@construct-space/ui` component inventory, sdk composables, graph models/scopes/access, action surface, drag-drop, common pitfalls). Loadable as a Construct skill so AI agents can build spaces without external lookups
+- **`eslint.config.js` template** — flat-config ESLint scaffolded into new spaces, wired to `lint` script
+
+### Changed
+- **Templates default to the polished UI stack** — `package.json.tmpl` now includes `@construct-space/ui ^0.5.2`, `@construct-space/graph ^0.5.0`, `eslint`, `eslint-plugin-vue`, `typescript-eslint`. `index.vue.tmpl` uses `Card`, `Button`, `Empty` from UI. `actions.ts.tmpl` exports a working `ping` starter and references the Graph SDK
+- **README** documents the four built-in libraries available to spaces
+
 ## [1.5.1] — 2026-04-26
 
 ### Fixed
