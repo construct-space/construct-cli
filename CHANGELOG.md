@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.5.1] — 2026-04-26
+
+### Fixed
+- **Auto-mirror desktop auth** — `auth.load()` falls back to the desktop app's active profile (`profiles.json` → `profiles/<id>/auth.json`) when no separate CLI `credentials.json` exists. Operator-driven `construct graph push` calls (Space Developer agent) now succeed without a prior `construct login`, since the user is already signed into the desktop app.
+
 ## [1.5.0] — 2026-04-26
 
 ### Added

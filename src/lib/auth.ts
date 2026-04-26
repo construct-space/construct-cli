@@ -79,14 +79,61 @@ export function store(creds: Credentials): void {
 
 export function load(): Credentials {
   const path = credentialsPath()
-  if (!existsSync(path)) {
-    throw new Error("not logged in — run 'construct login' first")
+  if (existsSync(path)) {
+    const data = JSON.parse(readFileSync(path, 'utf-8')) as Credentials
+    if (data.token) return data
   }
-  const data = JSON.parse(readFileSync(path, 'utf-8')) as Credentials
-  if (!data.token) {
-    throw new Error("not logged in — run 'construct login' first")
+  // Fallback: when no CLI credentials file is present, mirror the desktop
+  // app's active profile. This is what makes `construct graph push` work
+  // when invoked by the operator (Space Developer agent) without a prior
+  // `construct login` — the user is already signed into the desktop app,
+  // so we reuse that auth instead of asking them to authenticate twice.
+  const fromProfile = loadFromActiveProfile()
+  if (fromProfile) return fromProfile
+  throw new Error("not logged in — run 'construct login' first")
+}
+
+// loadFromActiveProfile reads the desktop's profiles.json registry, finds
+// the active profile, and synthesizes a Credentials object from its
+// auth.json. Returns null when no profile is active or no auth.json exists.
+function loadFromActiveProfile(): Credentials | null {
+  try {
+    const regPath = join(dataDir(), 'profiles.json')
+    if (!existsSync(regPath)) return null
+    const reg = JSON.parse(readFileSync(regPath, 'utf-8')) as {
+      active_profile?: string
+    }
+    const activeId = reg.active_profile
+    if (!activeId) return null
+    const authPath = join(profilesDir(), activeId, 'auth.json')
+    if (!existsSync(authPath)) return null
+    const a = JSON.parse(readFileSync(authPath, 'utf-8')) as {
+      token?: string
+      authenticated?: boolean
+      user?: {
+        id?: string
+        uuid?: string
+        name?: string
+        username?: string
+        email?: string
+      }
+    }
+    if (!a.token) return null
+    if (a.authenticated === false) return null
+    const u = a.user || {}
+    return {
+      token: a.token,
+      portal: DEFAULT_PORTAL,
+      profileId: activeId,
+      user: {
+        id: u.id || u.uuid || activeId,
+        name: u.name || u.username || activeId,
+        email: u.email || '',
+      },
+    }
+  } catch {
+    return null
   }
-  return data
 }
 
 export function isAuthenticated(): boolean {

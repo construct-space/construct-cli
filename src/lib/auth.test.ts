@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
-import { listDesktopProfiles } from './auth.js'
+import { listDesktopProfiles, load } from './auth.js'
 
 const tmpDirs: string[] = []
 
@@ -89,5 +89,62 @@ describe('listDesktopProfiles', () => {
 
     const profiles = listDesktopProfiles()
     expect(profiles.map((p) => p.id)).toEqual(['good'])
+  })
+})
+
+describe('load (active-profile fallback)', () => {
+  test('throws when neither credentials.json nor profile registry exists', () => {
+    setupDataDir()
+    expect(() => load()).toThrow(/not logged in/)
+  })
+
+  test('mirrors active profile when credentials.json is missing', () => {
+    const root = setupDataDir()
+    writeFileSync(join(root, 'profiles.json'), JSON.stringify({ active_profile: 'uuid-1' }))
+    writeProfile(root, 'uuid-1', {
+      user: { id: 'u1', name: 'Alice', email: 'a@x.test' },
+      token: 'cat_alice',
+      authenticated: true,
+    })
+
+    const creds = load()
+    expect(creds.token).toBe('cat_alice')
+    expect(creds.profileId).toBe('uuid-1')
+    expect(creds.user?.email).toBe('a@x.test')
+  })
+
+  test('mirrors org profile id (org:<uuid>) when active', () => {
+    const root = setupDataDir()
+    writeFileSync(join(root, 'profiles.json'), JSON.stringify({ active_profile: 'org:uuid-2' }))
+    writeProfile(root, 'org:uuid-2', {
+      user: { id: 'u2', name: 'Bob' },
+      token: 'cat_bob',
+      authenticated: true,
+    })
+
+    const creds = load()
+    expect(creds.profileId).toBe('org:uuid-2')
+    expect(creds.token).toBe('cat_bob')
+  })
+
+  test('credentials.json wins over profile fallback when both exist', () => {
+    const root = setupDataDir()
+    writeFileSync(
+      join(root, 'credentials.json'),
+      JSON.stringify({ token: 'cli_token', portal: 'https://p', profileId: 'cli' })
+    )
+    writeFileSync(join(root, 'profiles.json'), JSON.stringify({ active_profile: 'desktop' }))
+    writeProfile(root, 'desktop', { token: 'desktop_token', authenticated: true })
+
+    const creds = load()
+    expect(creds.token).toBe('cli_token')
+    expect(creds.profileId).toBe('cli')
+  })
+
+  test('falls back when active profile is signed out (authenticated=false)', () => {
+    const root = setupDataDir()
+    writeFileSync(join(root, 'profiles.json'), JSON.stringify({ active_profile: 'revoked' }))
+    writeProfile(root, 'revoked', { token: 't', authenticated: false })
+    expect(() => load()).toThrow(/not logged in/)
   })
 })
