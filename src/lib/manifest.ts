@@ -3,6 +3,14 @@ import { join } from 'path'
 
 export const MANIFEST_FILE = 'space.manifest.json'
 
+/**
+ * Host API version this CLI targets. Stamped into every built manifest's
+ * `build.hostApiVersion` so the runtime SpaceLoader can warn on mismatch.
+ * Bump when the host API surface (UI components, SDK composables, graph
+ * client) changes in a way that affects spaces.
+ */
+export const HOST_API_VERSION = '0.5.0'
+
 export interface Author {
   name: string
   email?: string

@@ -2,19 +2,34 @@
 /**
  * {{.DisplayName}} — Home page
  *
- * Host-provided packages (vue, pinia, @vueuse/core, @construct/sdk, etc.)
- * are available as imports — they resolve to the host at runtime.
+ * Built-in libraries available at runtime (do not bundle):
+ *   @construct-space/ui     — Vue 3 components (Button, Card, Modal, Table, Badge, ...)
+ *   @construct-space/sdk    — useOrg, useOrgMembers, useToast, useAuth
+ *   @construct-space/graph  — defineModel, useGraph (multi-tenant data layer)
+ *   lucide-vue-next         — icons
  */
 import { ref } from 'vue'
+import { Button, Card, Empty } from '@construct-space/ui'
+import { Sparkles } from 'lucide-vue-next'
 
 const greeting = ref('Your space is ready. Start building!')
 </script>
 
 <template>
-  <div class="h-full flex items-center justify-center">
-    <div class="text-center">
-      <h1 class="text-2xl font-bold text-[var(--app-foreground)] mb-2">{{.DisplayName}}</h1>
-      <p class="text-sm text-[var(--app-muted)]">{{ greeting }}</p>
-    </div>
+  <div class="h-full flex items-center justify-center p-6">
+    <Card variant="default" class="max-w-md w-full text-center">
+      <template #header>
+        <div class="flex items-center justify-center gap-2 w-full">
+          <Sparkles class="size-5 text-[var(--app-accent)]" />
+          <h1 class="text-lg font-semibold text-[var(--app-foreground)]">{{.DisplayName}}</h1>
+        </div>
+      </template>
+
+      <Empty :description="greeting" size="sm" />
+
+      <template #footer-end>
+        <Button variant="solid" size="sm" label="Get Started" />
+      </template>
+    </Card>
   </div>
 </template>

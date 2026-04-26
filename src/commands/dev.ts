@@ -80,7 +80,7 @@ export async function dev(): Promise<void> {
     manifest.writeWithBuild(distDir, raw, {
       checksum,
       size: bundleData.length,
-      hostApiVersion: '0.2.0',
+      hostApiVersion: manifest.HOST_API_VERSION,
       builtAt: new Date().toISOString(),
     })
 

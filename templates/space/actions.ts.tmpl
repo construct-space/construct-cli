@@ -1,35 +1,26 @@
 /**
- * Space Actions — exposed to the AI agent via space_run_action
+ * Space Actions — exposed to the AI agent via space_run_action.
  *
- * Define actions here and they'll be automatically available as agent tools.
- * The agent calls: space_run_action(action: "action_id", payload: {...})
+ * Each action: { description, params, run }.
+ *  - `params` describe agent-callable inputs (type, description, required).
+ *  - `run` receives the payload and returns any JSON-serialisable value.
+ *
+ * Pair with @construct-space/graph for typed multi-tenant data:
+ *   import { useGraph } from '@construct-space/graph'
+ *   import { Item } from './models'
+ *   const items = useGraph(Item)
+ *
+ *   listItems: {
+ *     description: 'List items',
+ *     params: { limit: { type: 'number', required: false } },
+ *     run: async (p: any) => ({ items: await items.find({ limit: p.limit ?? 50 }) }),
+ *   }
  */
 
-// --- Graph SDK (data layer) ---
-// Uncomment after running `construct graph init` and defining models:
-//
-// import { useGraph } from '@construct-space/graph'
-// const graph = useGraph()
-//
-// Example action using Graph:
-// fetchItems: {
-//   description: 'Fetch items from the graph',
-//   params: {
-//     limit: { type: 'number', description: 'Max items to return', required: false },
-//   },
-//   run: async (p: any) => {
-//     const items = await graph.query('Item').limit(p.limit ?? 10).exec()
-//     return { items }
-//   },
-// },
-
 export const actions = {
-  // Example action:
-  // hello: {
-  //   description: 'Say hello',
-  //   params: {
-  //     name: { type: 'string', description: 'Name to greet', required: true },
-  //   },
-  //   run: (p: any) => ({ message: `Hello ${p.name}!` }),
-  // },
+  ping: {
+    description: 'Health check — returns pong with the space id.',
+    params: {},
+    run: () => ({ pong: true, space: '{{.ID}}' }),
+  },
 }

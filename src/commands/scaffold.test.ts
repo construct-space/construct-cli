@@ -324,12 +324,13 @@ describe('scaffold --full', () => {
 // 7. Graph path
 // ---------------------------------------------------------------------------
 describe('scaffold graph path', () => {
-  test('actions.ts includes commented graph SDK example', async () => {
+  test('actions.ts references graph SDK and exports a starter action', async () => {
     await scaffoldIn(tmpRoot, 'my-space')
     const actions = readFileSync(join(tmpRoot, 'my-space', 'src', 'actions.ts'), 'utf-8')
 
     expect(actions).toContain('@construct-space/graph')
-    expect(actions).toContain('construct graph init')
+    expect(actions).toContain('export const actions')
+    expect(actions).toContain('ping:')
   })
 })
 

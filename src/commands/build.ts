@@ -133,7 +133,7 @@ export async function build(options?: { entryOnly?: boolean }): Promise<void> {
   manifest.writeWithBuild(distDir, raw, {
     checksum,
     size: bundleData.length,
-    hostApiVersion: '0.2.0',
+    hostApiVersion: manifest.HOST_API_VERSION,
     builtAt: new Date().toISOString(),
   })
 

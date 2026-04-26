@@ -8,6 +8,7 @@
     "build": "construct build",
     "dev": "construct dev",
     "check": "construct check",
+    "lint": "eslint .",
     "validate": "construct validate"
   },
   "peerDependencies": {
@@ -18,10 +19,18 @@
   "devDependencies": {
     "@construct-space/cli": "latest",
     "@construct-space/sdk": "latest",
+    "@eslint/js": "^10.0.1",
     "@vitejs/plugin-vue": "^5.2.3",
+    "eslint": "^10.2.1",
+    "eslint-plugin-vue": "^10.0.0",
     "lucide-vue-next": "^1.0.0",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^9.0.0",
     "vite": "^6.3.5",
     "vue-tsc": "^3.2.5"
+  },
+  "dependencies": {
+    "@construct-space/graph": "^0.5.0",
+    "@construct-space/ui": "^0.5.2"
   }
 }

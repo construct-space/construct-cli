@@ -23,6 +23,25 @@ construct check                # Type-check + lint
 construct clean                # Remove build artifacts
 ```
 
+### Built-in libraries
+
+Scaffolded spaces ship with the full Construct stack pre-wired — import freely, the host resolves them at runtime (never bundled):
+
+| Package | Purpose |
+|---------|---------|
+| `@construct-space/ui` | Vue 3 components — `Button`, `Card`, `Modal`, `Table`, `Badge`, `Avatar`, `ToggleGroup`, `ConfirmationModal`, ... |
+| `@construct-space/sdk` | Host composables — `useOrg`, `useOrgMembers`, `useToast`, `useAuth` |
+| `@construct-space/graph` | Multi-tenant data layer — `defineModel`, `useGraph`, scopes, access rules |
+| `lucide-vue-next` | Icon set |
+
+```ts
+import { Button, Card, Modal } from '@construct-space/ui'
+import { useOrg, useOrgMembers } from '@construct-space/sdk'
+import { defineModel, field, useGraph } from '@construct-space/graph'
+```
+
+The scaffolded `src/pages/index.vue` and `src/actions.ts` show the recommended patterns. Use `construct check` (typecheck + ESLint flat config) before commit.
+
 ### Graph (Data Models)
 
 ```bash
