@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-04-26
+
+### Added
+- **Profile-aware install** — `construct install` now copies the built space into `profiles/<active>/spaces/<id>` so it lands in the desktop profile picked at login (falls back to the desktop's `active_profile` in `profiles.json`)
+- **`profileId` in credentials** — `construct login` records the picked profile id; `graph push` and other graph commands derive `X-Auth-Org-ID` from it (`org:<uuid>` → `<uuid>`) when `CONSTRUCT_ORG_ID` is unset
+
 ### Changed
 - **Widget templates use sandbox API** — scaffolded widgets now `inject('widgetApi')` instead of accessing globals directly, compatible with the closed Shadow DOM sandbox in Construct
 

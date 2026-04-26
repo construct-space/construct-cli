@@ -31,7 +31,7 @@ export function install(): void {
     bundleAgentDir(agentDir, distDir)
   }
 
-  // Copy to spaces dir
+  // Copy to spaces dir (profile-scoped if a profile is active)
   const installDir = spaceDir(m.id)
   mkdirSync(installDir, { recursive: true })
   cpSync(distDir, installDir, { recursive: true })

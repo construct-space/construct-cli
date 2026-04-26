@@ -80,7 +80,12 @@ export async function graphPush(): Promise<void> {
       'X-Auth-User-ID': userID,
     }
     // Bundle attachment requires org context on the backend (ownership check).
-    const pushOrgID = process.env.CONSTRUCT_ORG_ID
+    // Prefer the profile picked at login (`org:<uuid>` → `<uuid>`); fall back
+    // to the env var so existing automation keeps working.
+    let pushOrgID = process.env.CONSTRUCT_ORG_ID || ''
+    if (!pushOrgID && creds.profileId?.startsWith('org:')) {
+      pushOrgID = creds.profileId.slice('org:'.length)
+    }
     if (pushOrgID) headers['X-Auth-Org-ID'] = pushOrgID
 
     const resp = await fetch(`${graphURL}/api/schemas/register`, {

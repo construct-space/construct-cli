@@ -32,12 +32,21 @@ export function graphBaseURL(): string {
 
 /**
  * Resolve caller's org id from (in order): explicit option, --org flag CLI
- * conventions pass in, CONSTRUCT_ORG_ID env var. Returns "" when unset; each
- * command decides whether that's fatal.
+ * conventions pass in, CONSTRUCT_ORG_ID env var, then the profileId stored
+ * at login (when a desktop org profile was picked, its id is `org:<uuid>`).
+ * Returns "" when unset; each command decides whether that's fatal.
  */
 export function resolveOrgId(explicit?: string): string {
   if (explicit) return explicit
-  return process.env.CONSTRUCT_ORG_ID || ''
+  if (process.env.CONSTRUCT_ORG_ID) return process.env.CONSTRUCT_ORG_ID
+  try {
+    const creds = auth.load()
+    const pid = creds.profileId || ''
+    if (pid.startsWith('org:')) return pid.slice('org:'.length)
+  } catch {
+    // not logged in — fall through
+  }
+  return ''
 }
 
 /** Load credentials or exit with a friendly message — every command needs these. */

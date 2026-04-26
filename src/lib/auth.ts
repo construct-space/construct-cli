@@ -15,6 +15,7 @@ export interface Credentials {
   token: string
   portal: string
   user?: User
+  profileId?: string
 }
 
 export interface DesktopProfile {

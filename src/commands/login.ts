@@ -56,7 +56,7 @@ async function loginFromProfile(profiles: auth.DesktopProfile[]): Promise<void> 
     email: picked.user?.email || '',
   }
 
-  auth.store({ token: picked.token, portal: auth.DEFAULT_PORTAL, user })
+  auth.store({ token: picked.token, portal: auth.DEFAULT_PORTAL, user, profileId: picked.id })
   console.log(chalk.green(`Logged in as ${user.name}`))
   if (user.email) console.log(chalk.dim(`  ${user.email}`))
   console.log(chalk.dim(`  profile: ${picked.id}`))

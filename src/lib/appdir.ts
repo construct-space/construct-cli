@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { homedir } from 'os'
 import { platform } from 'process'
@@ -20,12 +21,39 @@ export function dataDir(): string {
   }
 }
 
-export function spacesDir(): string {
-  return join(dataDir(), 'spaces')
-}
-
 export function profilesDir(): string {
   return join(dataDir(), 'profiles')
+}
+
+// activeProfileId resolves the profile id to scope per-profile artifacts to.
+// Order: CLI credentials (set at login), then desktop's profiles.json
+// (active_profile chosen in the app), then "" — caller decides legacy fallback.
+export function activeProfileId(): string {
+  try {
+    const credsPath = join(dataDir(), 'credentials.json')
+    if (existsSync(credsPath)) {
+      const c = JSON.parse(readFileSync(credsPath, 'utf-8')) as { profileId?: string }
+      if (c.profileId) return c.profileId
+    }
+  } catch {
+    // fall through
+  }
+  try {
+    const regPath = join(dataDir(), 'profiles.json')
+    if (existsSync(regPath)) {
+      const r = JSON.parse(readFileSync(regPath, 'utf-8')) as { active_profile?: string }
+      if (r.active_profile) return r.active_profile
+    }
+  } catch {
+    // fall through
+  }
+  return ''
+}
+
+export function spacesDir(): string {
+  const profileId = activeProfileId()
+  if (profileId) return join(profilesDir(), profileId, 'spaces')
+  return join(dataDir(), 'spaces')
 }
 
 export function spaceDir(spaceId: string): string {
