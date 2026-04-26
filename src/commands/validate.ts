@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 import chalk from 'chalk'
 import * as manifest from '../lib/manifest.js'
+import { pageComponentFromPath } from '../lib/pagePaths.js'
 
 export function validate(): void {
   const root = process.cwd()
@@ -23,7 +24,7 @@ export function validate(): void {
   // Check pages exist
   let warnings = 0
   for (const page of m.pages) {
-    const component = page.component || (page.path === '' ? 'pages/index.vue' : `pages/${page.path}.vue`)
+    const component = page.component || pageComponentFromPath(page.path)
     const fullPath = join(root, 'src', component)
     if (!existsSync(fullPath)) {
       console.log(chalk.yellow(`  ⚠ Page component not found: src/${component}`))

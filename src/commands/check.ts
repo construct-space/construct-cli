@@ -4,6 +4,7 @@ import { join } from 'path'
 import chalk from 'chalk'
 import * as manifest from '../lib/manifest.js'
 import { detect, ensureDeps } from '../lib/runtime.js'
+import { pageComponentFromPath } from '../lib/pagePaths.js'
 
 export function check(): void {
   const root = process.cwd()
@@ -27,7 +28,7 @@ export function check(): void {
   // Check pages exist
   let warnings = 0
   for (const page of m.pages) {
-    const component = page.component || (page.path === '' ? 'pages/index.vue' : `pages/${page.path}.vue`)
+    const component = page.component || pageComponentFromPath(page.path)
     if (!existsSync(join(root, 'src', component))) {
       console.log(chalk.yellow(`  ⚠ Page not found: src/${component}`))
       warnings++

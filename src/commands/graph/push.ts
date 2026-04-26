@@ -138,9 +138,38 @@ export async function graphPush(): Promise<void> {
   }
 }
 
+function parseDefaultValue(raw: string): unknown {
+  const value = raw.trim()
+  try {
+    return JSON.parse(value)
+  } catch {
+    // JSON.parse handles numbers, booleans, null, and double-quoted strings.
+    // Model files commonly use single-quoted TS strings; preserve their value
+    // instead of sending the quote characters through to backend DDL.
+  }
+
+  const quote = value[0]
+  if ((quote === "'" || quote === '"') && value.endsWith(quote)) {
+    return value
+      .slice(1, -1)
+      .replace(/\\(['"\\bfnrt])/g, (_, ch: string) => {
+        switch (ch) {
+          case 'b': return '\b'
+          case 'f': return '\f'
+          case 'n': return '\n'
+          case 'r': return '\r'
+          case 't': return '\t'
+          default: return ch
+        }
+      })
+  }
+
+  return value
+}
+
 // Simple static parser for model files
 // Extracts defineModel('name', { fields }) structure
-function parseModelFile(content: string, fileName: string): any | null {
+export function parseModelFile(content: string, fileName: string): any | null {
   // Match defineModel('name', { ... })
   const modelMatch = content.match(/defineModel\s*\(\s*['"](\w+)['"]/)
   if (!modelMatch) return null
@@ -170,7 +199,7 @@ function parseModelFile(content: string, fileName: string): any | null {
       if (modifiers.includes('.url()')) field.validation = 'url'
       const defaultMatch = modifiers.match(/\.default\((.+?)\)/)
       if (defaultMatch) {
-        try { field.default = JSON.parse(defaultMatch[1]!) } catch { field.default = defaultMatch[1] }
+        field.default = parseDefaultValue(defaultMatch[1]!)
       }
     }
 

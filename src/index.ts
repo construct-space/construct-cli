@@ -15,6 +15,7 @@ import { graphInit } from './commands/graph/init.js'
 import { generate } from './commands/graph/generate.js'
 import { graphPush } from './commands/graph/push.js'
 import { graphMigrate } from './commands/graph/migrate.js'
+import { graphFork } from './commands/graph/fork.js'
 import pkg from '../package.json' with { type: 'json' }
 
 // Single source of truth. Bun inlines this JSON import at build time, so
@@ -124,6 +125,11 @@ graph
   .command('push')
   .description('Register models with the Graph service')
   .action(async () => graphPush())
+
+graph
+  .command('fork <new-space-id>')
+  .description('Rewrite this space manifest to a new graph space id')
+  .action((newSpaceID) => graphFork(newSpaceID))
 
 graph
   .command('migrate')
