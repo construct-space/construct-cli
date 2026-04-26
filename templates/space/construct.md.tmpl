@@ -215,7 +215,7 @@ await tasks.remove(id)
 
 ## Actions (agent surface)
 
-`src/actions.ts` exports an `actions` object — each entry becomes an agent-callable tool via `space_run_action`.
+`src/actions.ts` exports an `actions` object — each entry is exposed to the space's agent as a first-class tool.
 
 ```ts
 export const actions = {
@@ -230,7 +230,24 @@ export const actions = {
 }
 ```
 
-The agent (configured in `agent/config.md`) calls `space_list_actions` then `space_run_action`. Keep descriptions tight and specific — they're the only docstring the agent sees.
+### Wiring (REQUIRED — easy to miss)
+
+Each action becomes a tool named **`{spaceID}.{actionName}`** (dot, not underscore). The operator only pre-registers actions that are **explicitly whitelisted** in the agent config. An empty `tools: []` means the agent sees zero action tools and will report "unknown tool".
+
+```yaml
+# agent/config.md frontmatter
+---
+id: {{.ID}}
+tools:
+  - {{.ID}}.createTask
+  - {{.ID}}.listTasks
+  - {{.ID}}.updateTask
+---
+```
+
+Fallback: agents can also discover/invoke actions via the generic `space_list_actions` + `space_run_action` bridge tools. Prefer the whitelist — it gives the model proper tool definitions instead of stringly-typed action names.
+
+Keep action descriptions tight and specific — they're the only docstring the agent sees.
 
 ---
 
