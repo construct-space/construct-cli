@@ -100,6 +100,17 @@ All exported from the package root:
 
 **Composables**: `useNotification`, `notify`, `useAuth`, `useTheme`, `useClipboard`, `useMediaQuery`, `useFormValidation`, `useKeyboard`/`useHotkey`, `useClickOutside`, `useEscapeKey`, `useLocalStorage`, `useAsync`, `useDebounce`/`useThrottle`, `useToggle`, `useSearch`, `useIntersectionObserver`
 
+### Component gotchas
+
+- **`Avatar` sizes**: only `sm | md | lg` (no `xs`).
+- **`Select`** doesn't accept `multiple` — render a chip-toggle list yourself for multi-select.
+- **`Table`** column `align` literals must be `as const` to typecheck (`align: 'right' as const`).
+- **`Table` rowKey** is a string field name on the row object, not a function.
+- **`Modal`** uses `v-model:open` (not `v-model`); slots: `header | body | footer | accessory`.
+- **`Card`** slots: `header | accessory | default | footer | footer-end`. Use `title`/`description` props for the header to get standard styling; put right-side actions in `accessory`.
+- **`ConfirmationModal`** emits `@confirm` and `@cancel` — wire both, otherwise dismissal does nothing.
+- **Settings pages**: never raw `<select>`/`<input>`/`<textarea>` — use `Select`, `Switch`, `Input`, `Textarea` with `FormField` labels. Persist with `localStorage` (key prefix per space).
+
 ```vue
 <script setup lang="ts">
 import { Card, Button, Modal, Badge } from '@construct-space/ui'
@@ -185,9 +196,20 @@ await tasks.remove(id)
 
 ### Pitfalls
 
-- **`field.json()` columns** must receive a JSON-stringified value on write: `labels: JSON.stringify(arr)`. On read, parse back if it returns a string. Sending a JS array directly triggers `column is of type jsonb but expression is of type record`.
+- **`field.json()` columns** must receive a JSON-stringified value on write: `labels: JSON.stringify(arr)`. On read, parse back if it returns a string. Sending a JS array directly triggers `column is of type jsonb but expression is of type record`. Pattern:
+  ```ts
+  function parseLabels(raw: unknown): string[] {
+    if (Array.isArray(raw)) return raw as string[]
+    if (typeof raw === 'string' && raw.trim()) {
+      try { const v = JSON.parse(raw); return Array.isArray(v) ? v : [] } catch { return [] }
+    }
+    return []
+  }
+  ```
 - **Topological sort on push**: avoid `relation.belongsTo()` if push fails — use a `field.string()` foreign-key column instead and join manually in composables.
 - **Lazy provisioning**: first query for a new tenant auto-creates the schema; expect a one-time slower request.
+- **Schema ownership is sticky**: the first profile to `construct graph push` becomes the schema owner. Subsequent pushes from a different profile fail with "Ownership check failed". Bump the space `id` to fork, or push from the original owner profile.
+- **`access.member()` requires org context** — use `access.authenticated()` for org-scoped models that any logged-in member should be able to read/write. `member()` is for stricter membership checks.
 
 ---
 
