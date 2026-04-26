@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.6.1] — 2026-04-26
+
+### Fixed
+- **Bracketed dynamic-route pages no longer crash the bundler** — `entry.ts` legacy fallback path stripped slashes/colons but not `[id]` brackets, so a manifest entry like `path: "employee/[id]"` (when no filesystem match was found for a colon-style alias) generated `import Employee[id]Page from ...`, an invalid JS identifier. Brackets are now stripped before capitalization. Test added.
+
 ## [1.6.0] — 2026-04-26
 
 ### Added

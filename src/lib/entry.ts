@@ -122,7 +122,15 @@ function resolvePages(m: SpaceManifest, root: string, prefix: string): PageInfo[
     if (existsSync(legacyFullPath)) {
       let varName = 'IndexPage'
       if (p.path) {
-        varName = capitalize(p.path.replace(/[\/:]/g, '-').replace(/-+/g, '-')) + 'Page'
+        // Strip route-param brackets ([id]) and colons (:id) so the resulting
+        // identifier is a valid JS name. Without this, "employee/[id]" became
+        // "Employee[id]Page" and crashed the bundler.
+        varName = capitalize(
+          p.path
+            .replace(/\[([^\]]+)\]/g, '$1')
+            .replace(/[\/:]/g, '-')
+            .replace(/-+/g, '-'),
+        ) + 'Page'
       }
       return { varName, importPath: prefix + legacyComponent, path: p.path }
     }
