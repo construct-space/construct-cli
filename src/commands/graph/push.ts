@@ -198,11 +198,20 @@ function parseModelFile(content: string, fileName: string): any | null {
     accessRules[op!] = level!
   }
 
+  // Parse scope from the model options. Without this the backend stores
+  // an empty scope and ResolveSchemaName falls through to the shared
+  // project partition — every tenant ends up reading the same table.
+  let scope: string | undefined
+  const scopeMatch = content.match(/scope\s*:\s*['"](app|project|org)['"]/)
+  if (scopeMatch) scope = scopeMatch[1]
+
   const result: any = { name: modelName, fields }
 
-  // Build options if access rules found
-  if (Object.keys(accessRules).length > 0) {
-    result.options = { access: accessRules }
+  // Build options if access rules or scope found
+  if (Object.keys(accessRules).length > 0 || scope) {
+    result.options = {}
+    if (Object.keys(accessRules).length > 0) result.options.access = accessRules
+    if (scope) result.options.scope = scope
   }
 
   return result
