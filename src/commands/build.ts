@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, renameSync, statSync } from 'fs'
-import { join } from 'path'
+import { extname, join } from 'path'
 import { createHash } from 'crypto'
 import chalk from 'chalk'
 import ora from 'ora'
@@ -193,6 +193,67 @@ export function extractActionMetadata(actionsPath: string): Record<string, Actio
   }
 }
 
+const ICON_MIME: Record<string, string> = {
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+  '.ico': 'image/x-icon',
+}
+
+/** True if value is a relative path to an inlineable image (not lucide / data: / http). */
+function isInlineableIcon(value: unknown): value is string {
+  if (typeof value !== 'string' || !value) return false
+  if (value.startsWith('i-') || value.startsWith('lucide:')) return false
+  if (value.startsWith('data:')) return false
+  if (/^https?:\/\//.test(value)) return false
+  return extname(value).toLowerCase() in ICON_MIME
+}
+
+/** Resolve an icon ref against space root: try as-is, then under src/. */
+function resolveIconPath(root: string, ref: string): string | null {
+  const rel = ref.replace(/^\.?\//, '')
+  for (const candidate of [join(root, rel), join(root, 'src', rel)]) {
+    if (existsSync(candidate)) return candidate
+  }
+  return null
+}
+
+function inlineIcon(root: string, ref: string): string | null {
+  const abs = resolveIconPath(root, ref)
+  if (!abs) return null
+  const mime = ICON_MIME[extname(abs).toLowerCase()] || 'application/octet-stream'
+  const b64 = readFileSync(abs).toString('base64')
+  return `data:${mime};base64,${b64}`
+}
+
+/** Inline relative icon refs (icon, navigation.icon, pages[].icon) as data URIs. */
+function inlineManifestIcons(root: string, raw: Record<string, unknown>): void {
+  if (isInlineableIcon(raw.icon)) {
+    const data = inlineIcon(root, raw.icon)
+    if (data) raw.icon = data
+    else console.warn(chalk.yellow(`  Icon not found: ${raw.icon}`))
+  }
+  const nav = raw.navigation as Record<string, unknown> | undefined
+  if (nav && isInlineableIcon(nav.icon)) {
+    const data = inlineIcon(root, nav.icon as string)
+    if (data) nav.icon = data
+    else console.warn(chalk.yellow(`  navigation.icon not found: ${nav.icon}`))
+  }
+  const pages = raw.pages as Array<Record<string, unknown>> | undefined
+  if (Array.isArray(pages)) {
+    for (const p of pages) {
+      if (isInlineableIcon(p.icon)) {
+        const data = inlineIcon(root, p.icon as string)
+        if (data) p.icon = data
+        else console.warn(chalk.yellow(`  page icon not found: ${p.icon}`))
+      }
+    }
+  }
+}
+
 export async function build(options?: { entryOnly?: boolean }): Promise<void> {
   const root = process.cwd()
 
@@ -253,6 +314,10 @@ export async function build(options?: { entryOnly?: boolean }): Promise<void> {
   const bundleData = readFileSync(bundlePath)
   const checksum = createHash('sha256').update(bundleData).digest('hex')
   const raw = manifest.readRaw(root)
+
+  // Inline relative icon paths (svg/png/etc) as data URIs so the host can render
+  // them without copying assets out of the bundle.
+  inlineManifestIcons(root, raw)
 
   // Extract action metadata from src/actions.ts and inline into manifest
   const actionsPath = join(root, 'src', 'actions.ts')

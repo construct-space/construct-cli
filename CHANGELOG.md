@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [1.6.3] — 2026-04-27
+
+### Added
+- **Inline relative icon paths as data URIs at build** — `manifest.icon`, `navigation.icon`, and `pages[].icon` may now reference an SVG/PNG/JPG/WEBP/GIF/ICO file (e.g. `"icon": "assets/nba.svg"`). The build resolver tries `<root>/<path>` then `<root>/src/<path>`, reads the file, and writes a `data:` URI into `dist/manifest.json` so the host can render it without copying assets out of the bundle. Lucide names, `data:` URIs, and `http(s)://` URLs pass through unchanged. Missing paths emit a build warning instead of failing
+
 ## [1.6.1] — 2026-04-26
 
 ### Fixed
