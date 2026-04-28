@@ -91,7 +91,6 @@ export async function scaffold(nameArg?: string, options?: ScaffoldOptions): Pro
     join(name, 'agent', 'hooks'),
     join(name, 'agent', 'tools'),
     join(name, 'widgets', 'summary'),
-    join(name, '.github', 'workflows'),
   ]
   for (const d of dirs) mkdirSync(d, { recursive: true })
 
@@ -114,7 +113,6 @@ export async function scaffold(nameArg?: string, options?: ScaffoldOptions): Pro
     'config.md.tmpl': join(name, 'agent', 'config.md'),
     'skill.md.tmpl': join(name, 'agent', 'skills', 'default.md'),
     'safety.json.tmpl': join(name, 'agent', 'hooks', 'safety.json'),
-    'build.yml.tmpl': join(name, '.github', 'workflows', 'build.yml'),
     'tsconfig.json.tmpl': join(name, 'tsconfig.json'),
     'eslint.config.js.tmpl': join(name, 'eslint.config.js'),
     'gitignore.tmpl': join(name, '.gitignore'),

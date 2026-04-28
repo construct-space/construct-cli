@@ -73,7 +73,6 @@ describe('scaffold file structure', () => {
       'agent/hooks/safety.json',
       'widgets/summary/2x1.vue',
       'widgets/summary/4x1.vue',
-      '.github/workflows/build.yml',
     ]
 
     for (const file of expected) {
