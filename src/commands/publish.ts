@@ -18,7 +18,7 @@ interface PublishResult {
   log?: string
 }
 
-async function uploadSource(portalURL: string, token: string, tarballPath: string, m: manifest.SpaceManifest): Promise<PublishResult> {
+async function uploadSource(portalURL: string, identityToken: string, publisherKey: string | undefined, tarballPath: string, m: manifest.SpaceManifest): Promise<PublishResult> {
   const formData = new FormData()
   formData.append('manifest', JSON.stringify(m))
 
@@ -26,9 +26,21 @@ async function uploadSource(portalURL: string, token: string, tarballPath: strin
   const blob = new Blob([fileData])
   formData.append('source', blob, basename(tarballPath))
 
+  // Bearer = identity (cat_*) — required for the gateway's auth_request, which
+  // validates against accounts. X-API-Key = publisher proof (csk_live_*) —
+  // forwarded untouched by accounts; the developer service reads it to
+  // attribute the resulting space to the org publisher. Sending the
+  // publisher key as Bearer would 401 at the gateway.
+  const headers: Record<string, string> = {
+    'Authorization': `Bearer ${identityToken}`,
+  }
+  if (publisherKey) {
+    headers['X-API-Key'] = publisherKey
+  }
+
   const resp = await fetch(`${portalURL}/publish`, {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${token}` },
+    headers,
     body: formData,
   })
 
@@ -152,12 +164,16 @@ export async function publish(options?: { yes?: boolean; bump?: string }): Promi
     console.log(chalk.green(`Version bumped to ${m.version}`))
   }
 
-  // Resolve which credential to use for the publish upload. Prefer the
-  // publisher key (csk_live_*) when present — it carries publisher
-  // identity, so an org-context profile attributes the resulting space
-  // to the org. Fall back to the OAuth/CLI token for legacy profiles
-  // that pre-date the in-app enroll flow.
-  const publishToken = creds.publisherKey ?? creds.token
+  // The gateway only validates identity tokens (cat_*) on Authorization.
+  // A bare publisher key as `token` is a legacy `--api-key` login that
+  // predates the gateway — it can't pass auth_request. Bail with a clear
+  // message instead of letting the upload 401 with no context.
+  if (creds.token.startsWith('csk_live_')) {
+    console.error(chalk.red('Stored credential is a publisher key, not an identity token.'))
+    console.error(chalk.dim("  Run 'construct login' or sign in via the desktop app to refresh."))
+    process.exit(1)
+  }
+
   if (!creds.publisherKey) {
     console.log(chalk.yellow('No publisher key in active profile.'))
     console.log(chalk.dim('  Spaces will be attributed to your personal user identity.'))
@@ -203,7 +219,7 @@ export async function publish(options?: { yes?: boolean; bump?: string }): Promi
   // Upload
   const uploadSpinner = ora('Uploading & building...').start()
   try {
-    const result = await uploadSource(creds.portal, publishToken, tarballPath, m)
+    const result = await uploadSource(creds.portal, creds.token, creds.publisherKey, tarballPath, m)
     unlinkSync(tarballPath)
 
     // Tag locally
