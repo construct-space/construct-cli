@@ -12,10 +12,23 @@ export interface User {
 }
 
 export interface Credentials {
+  // Identity token (cat_* OAuth, cst_live_* CLI token, or csk_live_*
+  // publisher key). Used as the Bearer for non-publish API calls.
   token: string
   portal: string
   user?: User
   profileId?: string
+  // Publisher API key (csk_live_*) when the active profile has one.
+  // Carries publisher identity — for an org-context profile this is the
+  // org's key, so publishing with it attributes spaces to the org. The
+  // app writes this to auth.json on enroll; CLI publish prefers it over
+  // `token` so org attribution works without a separate `--scope=org`.
+  publisherKey?: string
+  // Convenience: which kind of publisher the key belongs to ("user" or
+  // "org"). Used for the publish-summary line so the user sees who
+  // they're publishing as before confirming.
+  publisherKind?: string
+  publisherName?: string
 }
 
 export interface DesktopProfile {
@@ -81,7 +94,15 @@ export function load(): Credentials {
   const path = credentialsPath()
   if (existsSync(path)) {
     const data = JSON.parse(readFileSync(path, 'utf-8')) as Credentials
-    if (data.token) return data
+    if (data.token) {
+      // Accept a bare publisher-key (csk_live_*) stored as `token` from a
+      // pre-publisherKey login. Mirror it onto publisherKey so publish
+      // attributes correctly.
+      if (!data.publisherKey && data.token.startsWith('csk_live_')) {
+        data.publisherKey = data.token
+      }
+      return data
+    }
   }
   // Fallback: when no CLI credentials file is present, mirror the desktop
   // app's active profile. This is what makes `construct graph push` work
@@ -117,6 +138,11 @@ function loadFromActiveProfile(): Credentials | null {
         username?: string
         email?: string
       }
+      publisher?: {
+        name?: string
+        kind?: string
+        api_key?: string
+      }
     }
     if (!a.token) return null
     if (a.authenticated === false) return null
@@ -130,6 +156,9 @@ function loadFromActiveProfile(): Credentials | null {
         name: u.name || u.username || activeId,
         email: u.email || '',
       },
+      publisherKey: a.publisher?.api_key,
+      publisherKind: a.publisher?.kind,
+      publisherName: a.publisher?.name,
     }
   } catch {
     return null

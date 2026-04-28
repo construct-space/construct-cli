@@ -152,12 +152,32 @@ export async function publish(options?: { yes?: boolean; bump?: string }): Promi
     console.log(chalk.green(`Version bumped to ${m.version}`))
   }
 
+  // Resolve which credential to use for the publish upload. Prefer the
+  // publisher key (csk_live_*) when present — it carries publisher
+  // identity, so an org-context profile attributes the resulting space
+  // to the org. Fall back to the OAuth/CLI token for legacy profiles
+  // that pre-date the in-app enroll flow.
+  const publishToken = creds.publisherKey ?? creds.token
+  if (!creds.publisherKey) {
+    console.log(chalk.yellow('No publisher key in active profile.'))
+    console.log(chalk.dim('  Spaces will be attributed to your personal user identity.'))
+    console.log(chalk.dim('  To publish as an org: enroll the org from the desktop app'))
+    console.log(chalk.dim('  (Org Settings → Developer), then re-run this command.'))
+    console.log()
+  }
+
   // Summary
   console.log()
   console.log(`  Space:   ${chalk.cyan(m.name)}`)
   console.log(`  Version: ${chalk.cyan('v' + m.version)}`)
   console.log(`  Server:  ${chalk.dim(creds.portal)}`)
-  if (creds.user) console.log(`  Author:  ${chalk.dim(creds.user.name)}`)
+  if (creds.publisherKey) {
+    const kind = creds.publisherKind === 'org' ? 'org' : 'personal'
+    const label = creds.publisherName || creds.user?.name || ''
+    console.log(`  As:      ${chalk.cyan(label)} ${chalk.dim(`(${kind} publisher)`)}`)
+  } else if (creds.user) {
+    console.log(`  Author:  ${chalk.dim(creds.user.name)}`)
+  }
   console.log()
 
   if (!yes) {
@@ -183,7 +203,7 @@ export async function publish(options?: { yes?: boolean; bump?: string }): Promi
   // Upload
   const uploadSpinner = ora('Uploading & building...').start()
   try {
-    const result = await uploadSource(creds.portal, creds.token, tarballPath, m)
+    const result = await uploadSource(creds.portal, publishToken, tarballPath, m)
     unlinkSync(tarballPath)
 
     // Tag locally
