@@ -1,9 +1,34 @@
-import { existsSync, cpSync, mkdirSync } from 'fs'
+import { existsSync, cpSync, mkdirSync, readdirSync, chmodSync, statSync } from 'fs'
 import { join } from 'path'
 import chalk from 'chalk'
 import * as manifest from '../lib/manifest.js'
 import { bundleAgentDir } from '../lib/agent.js'
 import { spaceDir } from '../lib/appdir.js'
+
+/**
+ * Walk <installDir>/bin and ensure every regular file is executable.
+ * cpSync preserves mode bits, but tarball extractors and FAT filesystems can
+ * drop them — chmod here is a belt-and-suspenders fix so `useSpaceBinary`
+ * works on first launch without relying on the chmod fallback in the host.
+ */
+function ensureBinExecutable(installDir: string): void {
+  if (process.platform === 'win32') return
+  const binRoot = join(installDir, 'bin')
+  if (!existsSync(binRoot)) return
+  const walk = (dir: string): void => {
+    for (const name of readdirSync(dir)) {
+      const path = join(dir, name)
+      const st = statSync(path)
+      if (st.isDirectory()) {
+        walk(path)
+      } else if (st.isFile()) {
+        // Add user/group/other exec bits without disturbing read/write.
+        chmodSync(path, st.mode | 0o111)
+      }
+    }
+  }
+  walk(binRoot)
+}
 
 /**
  * Install a built space to the Construct spaces directory.
@@ -35,6 +60,7 @@ export function install(): void {
   const installDir = spaceDir(m.id)
   mkdirSync(installDir, { recursive: true })
   cpSync(distDir, installDir, { recursive: true })
+  ensureBinExecutable(installDir)
 
   console.log(chalk.green(`Installed ${m.name} → ${installDir}`))
   console.log(chalk.dim('  Restart Construct to load the updated space.'))

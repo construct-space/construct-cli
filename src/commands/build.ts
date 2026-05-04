@@ -13,8 +13,13 @@ import { bundleAgentDir } from '../lib/agent.js'
  * Spaces can reference files inside these from manifest fields (icon, etc.)
  * using relative paths like "icons/foo.svg" — the host resolves them against
  * the installed dist/.
+ *
+ * `bin/` carries native helpers shipped per platform under
+ * `bin/<os>-<arch>/<name>[.exe]` and is exposed to space code via the SDK
+ * helper `useSpaceBinary`. cpSync preserves exec bits so binaries stay
+ * executable after install.
  */
-const ASSET_DIRS = ['icons', 'assets', 'media', 'public'] as const
+const ASSET_DIRS = ['icons', 'assets', 'media', 'public', 'bin'] as const
 
 function copyAssetDirs(root: string, distDir: string): string[] {
   const copied: string[] = []
@@ -32,38 +37,173 @@ function copyAssetDirs(root: string, distDir: string): string[] {
  * Parses the exported `actions` object statically — does NOT execute the file.
  * Falls back gracefully if the file uses dynamic patterns we can't parse.
  */
-function extractActionMetadata(actionsPath: string): Record<string, { description: string; params?: Record<string, { type: string; description?: string; required?: boolean }> }> | null {
-  try {
-    const source = readFileSync(actionsPath, 'utf-8')
+function stripTsComments(source: string): string {
+  let out = ''
+  let i = 0
+  let quote: '"' | "'" | '`' | null = null
+  let escaped = false
 
-    // Quick regex extraction — looks for action definitions in the exported object.
-    // Matches: actionId: { description: '...', params: { ... } }
-    const result: Record<string, { description: string; params?: Record<string, { type: string; description?: string; required?: boolean }> }> = {}
+  while (i < source.length) {
+    const ch = source[i]!
+    const next = source[i + 1]
 
-    // Find description strings for each action
-    const actionPattern = /(\w+)\s*:\s*\{[^}]*description\s*:\s*['"`]([^'"`]+)['"`]/g
-    let match
-    while ((match = actionPattern.exec(source)) !== null) {
-      const actionId = match[1]!
-      const description = match[2]!
-      result[actionId] = { description }
+    if (quote) {
+      out += ch
+      if (escaped) {
+        escaped = false
+      } else if (ch === '\\') {
+        escaped = true
+      } else if (ch === quote) {
+        quote = null
+      }
+      i += 1
+      continue
     }
 
-    // For each found action, try to extract params
-    for (const actionId of Object.keys(result)) {
-      const paramBlockPattern = new RegExp(
-        `${actionId}\\s*:\\s*\\{[\\s\\S]*?params\\s*:\\s*\\{([\\s\\S]*?)\\}\\s*,?\\s*(?:run|\\})`,
-      )
-      const paramMatch = source.match(paramBlockPattern)
-      if (paramMatch?.[1]) {
+    if (ch === '"' || ch === "'" || ch === '`') {
+      quote = ch
+      out += ch
+      i += 1
+      continue
+    }
+
+    if (ch === '/' && next === '/') {
+      while (i < source.length && source[i] !== '\n') i += 1
+      out += '\n'
+      continue
+    }
+
+    if (ch === '/' && next === '*') {
+      i += 2
+      while (i < source.length && !(source[i] === '*' && source[i + 1] === '/')) {
+        out += source[i] === '\n' ? '\n' : ' '
+        i += 1
+      }
+      i += 2
+      continue
+    }
+
+    out += ch
+    i += 1
+  }
+
+  return out
+}
+
+function findMatchingBrace(source: string, openIndex: number): number {
+  let depth = 0
+  let quote: '"' | "'" | '`' | null = null
+  let escaped = false
+
+  for (let i = openIndex; i < source.length; i += 1) {
+    const ch = source[i]!
+
+    if (quote) {
+      if (escaped) {
+        escaped = false
+      } else if (ch === '\\') {
+        escaped = true
+      } else if (ch === quote) {
+        quote = null
+      }
+      continue
+    }
+
+    if (ch === '"' || ch === "'" || ch === '`') {
+      quote = ch
+      continue
+    }
+
+    if (ch === '{') depth += 1
+    if (ch === '}') {
+      depth -= 1
+      if (depth === 0) return i
+    }
+  }
+
+  return -1
+}
+
+function readObjectEntries(source: string): Array<{ key: string; body: string }> {
+  const entries: Array<{ key: string; body: string }> = []
+  let i = 0
+
+  while (i < source.length) {
+    while (i < source.length && /[\s,]/.test(source[i]!)) i += 1
+    if (i >= source.length) break
+
+    let key = ''
+    const quote = source[i]
+    if (quote === '"' || quote === "'" || quote === '`') {
+      i += 1
+      const start = i
+      while (i < source.length && source[i] !== quote) {
+        if (source[i] === '\\') i += 1
+        i += 1
+      }
+      key = source.slice(start, i)
+      i += 1
+    } else {
+      const match = /^[A-Za-z_$][\w$-]*/.exec(source.slice(i))
+      if (!match) {
+        i += 1
+        continue
+      }
+      key = match[0]
+      i += key.length
+    }
+
+    while (i < source.length && /\s/.test(source[i]!)) i += 1
+    if (source[i] !== ':') continue
+    i += 1
+    while (i < source.length && /\s/.test(source[i]!)) i += 1
+    if (source[i] !== '{') continue
+
+    const close = findMatchingBrace(source, i)
+    if (close === -1) break
+    entries.push({ key, body: source.slice(i + 1, close) })
+    i = close + 1
+  }
+
+  return entries
+}
+
+function getNamedObjectBody(source: string, name: string): string | null {
+  return readObjectEntries(source).find(entry => entry.key === name)?.body ?? null
+}
+
+export function extractActionMetadata(actionsPath: string): Record<string, { description: string; params?: Record<string, { type: string; description?: string; required?: boolean }> }> | null {
+  try {
+    const source = stripTsComments(readFileSync(actionsPath, 'utf-8'))
+    const actionsMatch = /export\s+const\s+actions\s*=\s*\{/.exec(source)
+    if (!actionsMatch) return null
+
+    const actionsOpen = source.indexOf('{', actionsMatch.index)
+    const actionsClose = findMatchingBrace(source, actionsOpen)
+    if (actionsClose === -1) return null
+    const actionsBody = source.slice(actionsOpen + 1, actionsClose)
+
+    const result: Record<string, { description: string; params?: Record<string, { type: string; description?: string; required?: boolean }> }> = {}
+
+    for (const entry of readObjectEntries(actionsBody)) {
+      const descriptionMatch = /\bdescription\s*:\s*['"`]([^'"`]+)['"`]/.exec(entry.body)
+      if (!descriptionMatch) continue
+      const actionId = entry.key
+      const description = descriptionMatch[1]!
+      result[actionId] = { description }
+
+      const paramsBody = getNamedObjectBody(entry.body, 'params')
+      if (paramsBody) {
         const params: Record<string, { type: string; description?: string; required?: boolean }> = {}
-        const paramEntryPattern = /(\w+)\s*:\s*\{\s*type\s*:\s*['"`](\w+)['"`](?:\s*,\s*description\s*:\s*['"`]([^'"`]*)['"`])?(?:\s*,\s*required\s*:\s*(true|false))?\s*\}/g
-        let pm
-        while ((pm = paramEntryPattern.exec(paramMatch[1])) !== null) {
-          params[pm[1]!] = {
-            type: pm[2]!,
-            ...(pm[3] ? { description: pm[3] } : {}),
-            ...(pm[4] === 'true' ? { required: true } : {}),
+        for (const paramEntry of readObjectEntries(paramsBody)) {
+          const typeMatch = /\btype\s*:\s*['"`](\w+)['"`]/.exec(paramEntry.body)
+          if (!typeMatch) continue
+          const paramDescriptionMatch = /\bdescription\s*:\s*['"`]([^'"`]*)['"`]/.exec(paramEntry.body)
+          const requiredMatch = /\brequired\s*:\s*(true|false)/.exec(paramEntry.body)
+          params[paramEntry.key] = {
+            type: typeMatch[1]!,
+            ...(paramDescriptionMatch?.[1] ? { description: paramDescriptionMatch[1] } : {}),
+            ...(requiredMatch?.[1] === 'true' ? { required: true } : {}),
           }
         }
         if (Object.keys(params).length > 0) {

@@ -126,6 +126,8 @@ export interface GraphSpec {
   imports?: ImportSpec[]
 }
 
+export type SpaceScope = 'app' | 'org'
+
 export interface SpaceManifest {
   id: string
   name: string
@@ -133,7 +135,14 @@ export interface SpaceManifest {
   description: string
   author: Author
   icon: string
-  scope: 'app' | 'project' | 'org'
+  /** Surfaces this space exposes itself on. Allowed: "app" | "org". */
+  scopes: SpaceScope[]
+  /**
+   * True when the space adapts its behaviour to the active project context
+   * (scoped queries, project-bound graph models, project page surfaces).
+   * Orthogonal to `scopes`.
+   */
+  projectAware?: boolean
   minConstructVersion?: string
   navigation: Navigation
   pages: Page[]
@@ -173,7 +182,13 @@ export function validate(m: SpaceManifest): string[] {
   if (!m.description) errors.push('description: must be a string')
   if (!m.author?.name) errors.push('author: must be an object with a name')
   if (!m.icon) errors.push('icon: must be a string')
-  if (!['app', 'project', 'org'].includes(m.scope)) errors.push('scope: must be "app", "project", or "org"')
+  const allowedScopes: SpaceScope[] = ['app', 'org']
+  if (!Array.isArray(m.scopes) || m.scopes.length === 0 || !m.scopes.every(s => allowedScopes.includes(s))) {
+    errors.push('scopes: must be a non-empty array of "app" or "org"')
+  }
+  if (m.projectAware !== undefined && typeof m.projectAware !== 'boolean') {
+    errors.push('projectAware: must be a boolean')
+  }
   if (!m.pages?.length) errors.push('pages: must be a non-empty array')
   if (!m.navigation?.label) errors.push('navigation: must be an object')
   return errors
