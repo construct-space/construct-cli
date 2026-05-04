@@ -87,6 +87,13 @@ export async function graphPush(): Promise<void> {
       pushOrgID = creds.profileId.slice('org:'.length)
     }
     if (pushOrgID) headers['X-Auth-Org-ID'] = pushOrgID
+    // Publisher key (csk_live_*) — when present, attribution flows through the
+    // graph's auth middleware: VerifyKey returns the publisher's owning
+    // user_id/org_id, RequireAuth promotes those to X-Auth-User-ID /
+    // X-Auth-Org-ID, and the registry treats the push as that identity. This
+    // is the only path that gives an org-publisher push a non-empty
+    // callerOrgID without an org-scoped bearer token.
+    if (creds.publisherKey) headers['X-API-Key'] = creds.publisherKey
 
     const resp = await fetch(`${graphURL}/api/schemas/register`, {
       method: 'POST',
