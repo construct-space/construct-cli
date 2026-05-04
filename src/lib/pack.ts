@@ -1,7 +1,7 @@
 import { readdirSync, statSync, existsSync } from 'fs'
 import { join, basename } from 'path'
 import { tmpdir } from 'os'
-import { execSync } from 'child_process'
+import { execFileSync } from 'child_process'
 
 const allowedDirs = [
   'pages', 'components', 'composables', 'engine', 'agent', 'utils',
@@ -50,10 +50,19 @@ export async function packSource(root: string): Promise<string> {
     throw new Error('No files to pack')
   }
 
-  // Use system tar (available on macOS/Linux)
-  const excludes = '--exclude=node_modules --exclude=dist --exclude=.git --exclude=*.env --exclude=*.log --exclude=*.lock --exclude=*.lockb'
-  const cmd = `tar czf "${tarballPath}" ${excludes} ${validEntries.join(' ')}`
-  execSync(cmd, { cwd: root })
+  // Use system tar (available on macOS/Linux). execFileSync — args go in
+  // an array so a filename like `foo; rm -rf /.config.ts` (which would pass
+  // the allowedRootPatterns regex) can't inject shell commands.
+  const excludes = [
+    '--exclude=node_modules',
+    '--exclude=dist',
+    '--exclude=.git',
+    '--exclude=*.env',
+    '--exclude=*.log',
+    '--exclude=*.lock',
+    '--exclude=*.lockb',
+  ]
+  execFileSync('tar', ['czf', tarballPath, ...excludes, ...validEntries], { cwd: root })
 
   const size = statSync(tarballPath).size
   if (size > MAX_SIZE) {

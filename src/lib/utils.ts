@@ -1,19 +1,23 @@
-import { execSync } from 'child_process'
+import { execFileSync } from 'child_process'
 import { platform } from 'os'
 
+// All shell-outs in this module use execFileSync with an args array — never
+// a shell string — so a URL or arg containing quotes / `$()` / `;` cannot
+// inject extra commands. Preserves callers' "best-effort" semantics by
+// swallowing exec errors where the original behaviour did.
 export function openBrowser(url: string): void {
   try {
     switch (platform()) {
-      case 'darwin': execSync(`open "${url}"`); break
-      case 'linux': execSync(`xdg-open "${url}"`); break
-      case 'win32': execSync(`rundll32 url.dll,FileProtocolHandler "${url}"`); break
+      case 'darwin': execFileSync('open', [url]); break
+      case 'linux': execFileSync('xdg-open', [url]); break
+      // rundll32 needs the entry point and URL as separate argv entries.
+      case 'win32': execFileSync('rundll32', ['url.dll,FileProtocolHandler', url]); break
     }
   } catch {}
 }
 
 export function git(dir: string, ...args: string[]): string {
-  const quoted = args.map(a => a.includes(' ') || a.includes(':') ? `"${a}"` : a)
-  return execSync(`git ${quoted.join(' ')}`, { cwd: dir, encoding: 'utf-8' }).trim()
+  return execFileSync('git', args, { cwd: dir, encoding: 'utf-8' }).trim()
 }
 
 export function gitSafe(dir: string, ...args: string[]): string | null {

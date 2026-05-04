@@ -3,3 +3,4 @@ dist/
 *.lockb
 .vite/
 release.sh
+.npmrc

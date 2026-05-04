@@ -26,7 +26,9 @@ function copyAssetDirs(root: string, distDir: string): string[] {
   for (const name of ASSET_DIRS) {
     const src = join(root, name)
     if (!existsSync(src) || !statSync(src).isDirectory()) continue
-    cpSync(src, join(distDir, name), { recursive: true })
+    // verbatimSymlinks: true so a symlink under e.g. assets/ pointing at
+    // /etc/passwd never causes the build to write outside distDir.
+    cpSync(src, join(distDir, name), { recursive: true, verbatimSymlinks: true })
     copied.push(name)
   }
   return copied

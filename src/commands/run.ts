@@ -1,4 +1,4 @@
-import { existsSync, cpSync, mkdirSync, readdirSync, chmodSync, statSync } from 'fs'
+import { existsSync, cpSync, mkdirSync, readdirSync, chmodSync, lstatSync } from 'fs'
 import { join } from 'path'
 import chalk from 'chalk'
 import * as manifest from '../lib/manifest.js'
@@ -15,10 +15,15 @@ function ensureBinExecutable(installDir: string): void {
   if (process.platform === 'win32') return
   const binRoot = join(installDir, 'bin')
   if (!existsSync(binRoot)) return
+  // Use lstat (not stat) so we never follow a symlink: a malicious build
+  // that sticks a symlink in bin/ pointing at /etc/passwd would otherwise
+  // get its target chmodded +x. We just skip symlinks entirely — host
+  // sandbox should reject them at load time anyway.
   const walk = (dir: string): void => {
     for (const name of readdirSync(dir)) {
       const path = join(dir, name)
-      const st = statSync(path)
+      const st = lstatSync(path)
+      if (st.isSymbolicLink()) continue
       if (st.isDirectory()) {
         walk(path)
       } else if (st.isFile()) {
@@ -59,7 +64,12 @@ export function install(): void {
   // Copy to spaces dir (profile-scoped if a profile is active)
   const installDir = spaceDir(m.id)
   mkdirSync(installDir, { recursive: true })
-  cpSync(distDir, installDir, { recursive: true })
+  // verbatimSymlinks: true prevents Node from following symlinks into the
+  // copy — a malicious dist/ that ships `dist/x → /etc/passwd` (or
+  // `../../../something` outside installDir) would otherwise overwrite
+  // arbitrary files. We copy the link itself; the host loader can decide
+  // whether to honour it.
+  cpSync(distDir, installDir, { recursive: true, verbatimSymlinks: true })
   ensureBinExecutable(installDir)
 
   console.log(chalk.green(`Installed ${m.name} → ${installDir}`))
