@@ -1,4 +1,4 @@
-import { existsSync, cpSync, mkdirSync, readdirSync, chmodSync, lstatSync } from 'fs'
+import { existsSync, cpSync, mkdirSync, readdirSync, chmodSync, lstatSync, rmSync } from 'fs'
 import { join } from 'path'
 import chalk from 'chalk'
 import * as manifest from '../lib/manifest.js'
@@ -61,15 +61,21 @@ export function install(): void {
     bundleAgentDir(agentDir, distDir)
   }
 
-  // Copy to spaces dir (profile-scoped if a profile is active)
+  // Copy to spaces dir (profile-scoped if a profile is active).
+  // Clear the install dir first — Bun's `fs.cpSync` silently no-ops on
+  // existing files in some cases, so a second `construct install` would
+  // leave stale `space-*.iife.js` / `manifest.json` in place and the
+  // host would either show old code or fail the bundle integrity check
+  // (manifest checksum vs file SHA).
   const installDir = spaceDir(m.id)
+  rmSync(installDir, { recursive: true, force: true })
   mkdirSync(installDir, { recursive: true })
   // verbatimSymlinks: true prevents Node from following symlinks into the
   // copy — a malicious dist/ that ships `dist/x → /etc/passwd` (or
   // `../../../something` outside installDir) would otherwise overwrite
   // arbitrary files. We copy the link itself; the host loader can decide
   // whether to honour it.
-  cpSync(distDir, installDir, { recursive: true, verbatimSymlinks: true })
+  cpSync(distDir, installDir, { recursive: true, verbatimSymlinks: true, force: true })
   ensureBinExecutable(installDir)
 
   console.log(chalk.green(`Installed ${m.name} → ${installDir}`))
