@@ -7,6 +7,12 @@ const allowedDirs = [
   'pages', 'components', 'composables', 'engine', 'agent', 'utils',
   'types', 'views', 'stores', 'spaces', 'data', 'src', 'public',
   'tests', 'widgets', 'models',
+  // Asset dirs — must match ASSET_DIRS in build.ts. These get copied
+  // into dist/ at server-side build time so the bundle ships custom
+  // SVGs (icons/), images (assets/, media/), and per-platform native
+  // helpers (bin/). Missing them here was why custom space icons like
+  // icons/NBA.svg silently disappeared from published bundles.
+  'icons', 'assets', 'media', 'bin',
 ]
 
 const allowedRootFiles = [
