@@ -63,6 +63,7 @@ program
   .description('Publish a space to the Construct registry')
   .option('-y, --yes', 'Skip all confirmation prompts')
   .option('--bump <type>', 'Auto-bump version (patch, minor, major)')
+  .option('--private', 'Publish as org-private (catalog-listed only inside the owning org). Requires an org publisher key.')
   .action(async (opts) => publish(opts))
 
 program
@@ -225,7 +226,7 @@ space.command('scaffold [name]').alias('new').alias('create')
 space.command('build').option('--entry-only').action(async (opts) => build(opts))
 space.command('dev').action(async () => dev())
 space.command('install').alias('run').action(() => install())
-space.command('publish').option('-y, --yes').option('--bump <type>')
+space.command('publish').option('-y, --yes').option('--bump <type>').option('--private')
   .action(async (opts) => publish(opts))
 space.command('validate').action(() => validate())
 space.command('check').action(() => check())

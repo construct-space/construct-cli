@@ -18,13 +18,17 @@ interface PublishResult {
   log?: string
 }
 
-async function uploadSource(portalURL: string, identityToken: string, publisherKey: string | undefined, tarballPath: string, m: manifest.SpaceManifest): Promise<PublishResult> {
+async function uploadSource(portalURL: string, identityToken: string, publisherKey: string | undefined, tarballPath: string, m: manifest.SpaceManifest, opts: { private?: boolean }): Promise<PublishResult> {
   const formData = new FormData()
   formData.append('manifest', JSON.stringify(m))
 
   const fileData = readFileSync(tarballPath)
   const blob = new Blob([fileData])
   formData.append('source', blob, basename(tarballPath))
+
+  if (opts.private) {
+    formData.append('private', 'true')
+  }
 
   // Bearer = identity (cat_*) — required for the gateway's auth_request, which
   // validates against accounts. X-API-Key = publisher proof (csk_live_*) —
@@ -79,9 +83,10 @@ function setVersionInFiles(root: string, oldVer: string, newVer: string): void {
   }
 }
 
-export async function publish(options?: { yes?: boolean; bump?: string }): Promise<void> {
+export async function publish(options?: { yes?: boolean; bump?: string; private?: boolean }): Promise<void> {
   const root = process.cwd()
   const yes = options?.yes ?? false
+  const wantPrivate = options?.private ?? false
 
   if (!manifest.exists(root)) {
     console.error(chalk.red('No space.manifest.json found in current directory'))
@@ -182,6 +187,15 @@ export async function publish(options?: { yes?: boolean; bump?: string }): Promi
     console.log()
   }
 
+  // --private only makes sense when publishing as an org. Bail early with a
+  // clear message instead of letting the server reject after the upload.
+  if (wantPrivate && creds.publisherKind !== 'org') {
+    console.error(chalk.red('--private requires an org publisher key.'))
+    console.error(chalk.dim('  Personal publishes are always public.'))
+    console.error(chalk.dim('  Enrol an org from the desktop app (Org Settings → Developer) and re-run.'))
+    process.exit(1)
+  }
+
   // Summary
   console.log()
   console.log(`  Space:   ${chalk.cyan(m.name)}`)
@@ -194,6 +208,7 @@ export async function publish(options?: { yes?: boolean; bump?: string }): Promi
   } else if (creds.user) {
     console.log(`  Author:  ${chalk.dim(creds.user.name)}`)
   }
+  console.log(`  Audience: ${wantPrivate ? chalk.magenta('org-private') : chalk.cyan('public')}`)
   console.log()
 
   if (!yes) {
@@ -219,7 +234,7 @@ export async function publish(options?: { yes?: boolean; bump?: string }): Promi
   // Upload
   const uploadSpinner = ora('Uploading & building...').start()
   try {
-    const result = await uploadSource(creds.portal, creds.token, creds.publisherKey, tarballPath, m)
+    const result = await uploadSource(creds.portal, creds.token, creds.publisherKey, tarballPath, m, { private: wantPrivate })
     unlinkSync(tarballPath)
 
     // Tag locally
