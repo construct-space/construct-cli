@@ -64,6 +64,7 @@ program
   .option('-y, --yes', 'Skip all confirmation prompts')
   .option('--bump <type>', 'Auto-bump version (patch, minor, major)')
   .option('--private', 'Publish as org-private (catalog-listed only inside the owning org). Requires an org publisher key.')
+  .option('--public', 'Flip a previously-private space back to the public catalog on this publish. Without --private or --public, visibility is preserved on update (and defaults to public on first publish).')
   .action(async (opts) => publish(opts))
 
 program
@@ -226,7 +227,7 @@ space.command('scaffold [name]').alias('new').alias('create')
 space.command('build').option('--entry-only').action(async (opts) => build(opts))
 space.command('dev').action(async () => dev())
 space.command('install').alias('run').action(() => install())
-space.command('publish').option('-y, --yes').option('--bump <type>').option('--private')
+space.command('publish').option('-y, --yes').option('--bump <type>').option('--private').option('--public')
   .action(async (opts) => publish(opts))
 space.command('validate').action(() => validate())
 space.command('check').action(() => check())
