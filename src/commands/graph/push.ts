@@ -1,0 +1,302 @@
+import { existsSync, readdirSync, readFileSync } from 'fs'
+import { join } from 'path'
+import chalk from 'chalk'
+import ora from 'ora'
+import * as manifest from '../../lib/manifest.js'
+import * as auth from '../../lib/auth.js'
+
+export async function graphPush(): Promise<void> {
+  const root = process.cwd()
+
+  if (!manifest.exists(root)) {
+    console.error(chalk.red('No space.manifest.json found in current directory'))
+    process.exit(1)
+  }
+
+  const m = manifest.read(root)
+  const modelsDir = join(root, 'src', 'models')
+
+  if (!existsSync(modelsDir)) {
+    console.error(chalk.red("No src/models/ directory found. Run 'construct graph init' first."))
+    process.exit(1)
+  }
+
+  // Collect model files
+  const modelFiles = readdirSync(modelsDir)
+    .filter(f => f.endsWith('.ts') && f !== 'index.ts')
+
+  if (modelFiles.length === 0) {
+    console.error(chalk.red('No model files found in src/models/'))
+    console.log(chalk.dim("  Generate one: construct graph g User name:string email:string"))
+    process.exit(1)
+  }
+
+  console.log(chalk.blue(`Pushing ${modelFiles.length} model(s) for space: ${m.id}`))
+
+  // We need to extract the model definitions from the TypeScript files
+  // Parse them statically to build the manifest
+  const models: any[] = []
+  for (const file of modelFiles) {
+    const content = readFileSync(join(modelsDir, file), 'utf-8')
+    const model = parseModelFile(content)
+    if (model) models.push(model)
+  }
+
+  if (models.length === 0) {
+    console.error(chalk.red('Could not parse any models from files'))
+    process.exit(1)
+  }
+
+  // Tenancy single source of truth: the space-level `scopes` in
+  // space.manifest.json. Stamp it onto every model that doesn't declare its
+  // own, so authors don't have to repeat `scopes: [...]` in each model file.
+  // Without a scope the backend falls through to the shared project partition
+  // and every tenant reads the same table (cross-tenant bleed).
+  const manifestScopes = Array.isArray(m.scopes) ? m.scopes : []
+  if (manifestScopes.length > 0) {
+    for (const model of models) {
+      const opts = model.options
+      const hasOwn = opts && ((Array.isArray(opts.scopes) && opts.scopes.length > 0) || opts.scope)
+      if (!hasOwn) {
+        model.options = { ...(opts || {}), scopes: manifestScopes }
+      }
+    }
+    console.log(chalk.dim(`  Tenancy: scopes ${JSON.stringify(manifestScopes)} (from space.manifest.json)`))
+  } else {
+    console.log(chalk.yellow('  Warning: manifest declares no "scopes" -- models register without tenancy and share one partition.'))
+  }
+
+  // Get credentials
+  let creds: auth.Credentials
+  try {
+    creds = auth.load()
+  } catch (err: any) {
+    console.error(chalk.red(err.message))
+    process.exit(1)
+  }
+
+  // Register schema with Graph service directly -- CLI uses bearer auth so
+  // we skip the my.construct.space session-auth gateway. Local dev can
+  // override with GRAPH_URL (e.g. http://localhost:8080).
+  const graphURL = process.env.GRAPH_URL || 'https://graph.construct.space'
+  const spinner = ora('Registering models...').start()
+
+  try {
+    // Include user ID for ownership verification
+    const userID = creds.user?.id || ''
+
+    // Carry bundle_id + imports from space.manifest.json's "graph" section
+    // through to the register call. Without this, setting bundle_id in the
+    // manifest is silently dropped and cross-space imports never persist.
+    const dataManifest: Record<string, unknown> = { version: 1, models }
+    if (m.graph?.bundle_id) dataManifest.bundle_id = m.graph.bundle_id
+    if (m.graph?.imports && m.graph.imports.length > 0) dataManifest.imports = m.graph.imports
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${creds.token}`,
+      'X-Space-ID': m.id,
+      'X-Auth-User-ID': userID,
+    }
+    // Bundle attachment requires org context on the backend (ownership check).
+    // Prefer the profile picked at login (`org:<uuid>` -> `<uuid>`); fall back
+    // to the env var so existing automation keeps working.
+    let pushOrgID = process.env.CONSTRUCT_ORG_ID || ''
+    if (!pushOrgID && creds.profileId?.startsWith('org:')) {
+      pushOrgID = creds.profileId.slice('org:'.length)
+    }
+    if (pushOrgID) headers['X-Auth-Org-ID'] = pushOrgID
+    // Publisher key (csk_live_*) -- when present, attribution flows through the
+    // graph's auth middleware: VerifyKey returns the publisher's owning
+    // user_id/org_id, RequireAuth promotes those to X-Auth-User-ID /
+    // X-Auth-Org-ID, and the registry treats the push as that identity. This
+    // is the only path that gives an org-publisher push a non-empty
+    // callerOrgID without an org-scoped bearer token.
+    if (creds.publisherKey) headers['X-API-Key'] = creds.publisherKey
+
+    const resp = await fetch(`${graphURL}/api/schemas/register`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        space_id: m.id,
+        space_name: m.name,
+        project_id: 'default',
+        version: m.version || '0.0.1',
+        manifest: dataManifest,
+      }),
+    })
+
+    if (resp.status === 403) {
+      spinner.fail('Ownership check failed')
+      try {
+        const errBody = await resp.json() as {
+          error?: string
+          owner_user_id?: string
+          owner_org_id?: string
+          owner_kind?: 'user' | 'org'
+          owner_name?: string
+        }
+        console.error(chalk.red(`  ${errBody.error || 'You are not the owner of this space'}`))
+        if (errBody.owner_kind === 'org') {
+          const label = errBody.owner_name
+            ? `${errBody.owner_name} (org${errBody.owner_org_id ? `: ${errBody.owner_org_id}` : ''})`
+            : errBody.owner_org_id || 'unknown org'
+          console.error(chalk.dim(`  Owned by: ${label}`))
+        } else if (errBody.owner_name) {
+          console.error(chalk.dim(`  Owned by: ${errBody.owner_name}${errBody.owner_user_id ? ` (${errBody.owner_user_id})` : ''}`))
+        } else if (errBody.owner_user_id) {
+          console.error(chalk.dim(`  Current owner: ${errBody.owner_user_id}`))
+        }
+        console.error(chalk.dim('  Fork to a new space_id to publish your own version.'))
+      } catch {
+        console.error(chalk.red(`  403: Forbidden -- ownership check failed`))
+      }
+      process.exit(1)
+    }
+
+    if (!resp.ok) {
+      const body = await resp.text()
+      spinner.fail('Registration failed')
+      console.error(chalk.red(`  ${resp.status}: ${body}`))
+      process.exit(1)
+    }
+
+    await resp.json()
+    spinner.succeed('Models registered')
+    console.log()
+    for (const model of models) {
+      console.log(`  ${chalk.cyan(model.name)} -- ${model.fields.length} field(s)`)
+    }
+    console.log()
+    console.log(chalk.dim(`  GraphQL endpoint: ${graphURL}/graphql`))
+    console.log(chalk.dim(`  Space ID: ${m.id}`))
+  } catch (err: any) {
+    spinner.fail('Failed to connect to Graph')
+    console.error(chalk.red(`  ${err.message}`))
+    process.exit(1)
+  }
+}
+
+function parseDefaultValue(raw: string): unknown {
+  const value = raw.trim()
+  try {
+    return JSON.parse(value)
+  } catch {
+    // JSON.parse handles numbers, booleans, null, and double-quoted strings.
+    // Model files commonly use single-quoted TS strings; preserve their value
+    // instead of sending the quote characters through to backend DDL.
+  }
+
+  const quote = value[0]
+  if ((quote === "'" || quote === '"') && value.endsWith(quote)) {
+    return value
+      .slice(1, -1)
+      .replace(/\\(['"\\bfnrt])/g, (_, ch: string) => {
+        switch (ch) {
+          case 'b': return '\b'
+          case 'f': return '\f'
+          case 'n': return '\n'
+          case 'r': return '\r'
+          case 't': return '\t'
+          default: return ch
+        }
+      })
+  }
+
+  return value
+}
+
+// Simple static parser for model files
+// Extracts defineModel('name', { fields }) structure
+export function parseModelFile(content: string): any | null {
+  // Match defineModel('name', { ... })
+  const modelMatch = content.match(/defineModel\s*\(\s*['"](\w+)['"]/)
+  if (!modelMatch) return null
+
+  const modelName = modelMatch[1]
+  const fields: any[] = []
+
+  // Match field definitions: name: field.type().modifier()
+  const fieldRegex = /(\w+)\s*:\s*field\.(\w+)\(\s*(?:\[([^\]]*)\])?\s*\)((?:\.\w+\([^)]*\))*)/g
+  let match
+
+  while ((match = fieldRegex.exec(content)) !== null) {
+    const [, name, type, enumValues, modifiers] = match
+    const field: any = { name, type }
+
+    // Parse enum values
+    if (type === 'enum' && enumValues) {
+      field.values = enumValues.split(',').map(v => v.trim().replace(/['"]/g, ''))
+    }
+
+    // Parse modifiers
+    if (modifiers) {
+      if (modifiers.includes('.required()')) field.required = true
+      if (modifiers.includes('.unique()')) field.unique = true
+      if (modifiers.includes('.index()')) field.index = true
+      if (modifiers.includes('.email()')) field.validation = 'email'
+      if (modifiers.includes('.url()')) field.validation = 'url'
+      const defaultMatch = modifiers.match(/\.default\((.+?)\)/)
+      if (defaultMatch) {
+        field.default = parseDefaultValue(defaultMatch[1]!)
+      }
+    }
+
+    fields.push(field)
+  }
+
+  // Match relation definitions: name: relation.type(Target)
+  const relRegex = /(\w+)\s*:\s*relation\.(belongsTo|hasMany)\((\w+)/g
+  while ((match = relRegex.exec(content)) !== null) {
+    const [, name, relationType, target] = match
+    fields.push({
+      name,
+      type: 'relation',
+      relation: relationType,
+      target: target!.toLowerCase(),
+    })
+  }
+
+  // Parse access rules from the model options (third argument to defineModel)
+  const accessRules: Record<string, string> = {}
+  const accessRegex = /(\w+)\s*:\s*access\.(\w+)\(\)/g
+  let accessMatch
+  while ((accessMatch = accessRegex.exec(content)) !== null) {
+    const [, op, level] = accessMatch
+    accessRules[op!] = level!
+  }
+
+  // Parse tenancy from the model options. The canonical form is the array
+  // `scopes: ['app', 'org']`; `scope: 'org'` is the legacy singular field.
+  // Without a value the backend stores an empty scope and ResolveSchemaName
+  // falls through to the shared project partition -- every tenant ends up
+  // reading the same table. When a model declares neither, graphPush() stamps
+  // the space-level scopes from space.manifest.json so isolation still works.
+  let scopes: string[] | undefined
+  const scopesMatch = content.match(/scopes\s*:\s*\[([^\]]*)\]/)
+  if (scopesMatch) {
+    const parsed = scopesMatch[1]!
+      .split(',')
+      .map(s => s.trim().replace(/['"]/g, ''))
+      .filter(s => s === 'app' || s === 'org' || s === 'project')
+    if (parsed.length > 0) scopes = parsed
+  }
+
+  let scope: string | undefined
+  if (!scopes) {
+    const scopeMatch = content.match(/scope\s*:\s*['"](app|project|org)['"]/)
+    if (scopeMatch) scope = scopeMatch[1]
+  }
+
+  const result: any = { name: modelName, fields }
+
+  // Build options if access rules or tenancy found
+  if (Object.keys(accessRules).length > 0 || scopes || scope) {
+    result.options = {}
+    if (Object.keys(accessRules).length > 0) result.options.access = accessRules
+    if (scopes) result.options.scopes = scopes
+    else if (scope) result.options.scope = scope
+  }
+
+  return result
+}

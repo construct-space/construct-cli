@@ -1,0 +1,50 @@
+{
+  "name": "@construct-space/cli",
+  "version": "1.11.0",
+  "description": "Construct CLI — scaffold, build, develop, and publish spaces",
+  "type": "module",
+  "bin": {
+    "construct": "dist/index.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target bun --format esm && cp -r templates dist/",
+    "dev": "bun run src/index.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix"
+  },
+  "dependencies": {
+    "commander": "^14.0.3",
+    "@inquirer/prompts": "^8.3.2",
+    "chalk": "^5.6.2",
+    "ora": "^9.3.0",
+    "chokidar": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^6.0.2",
+    "eslint": "^10.4.0",
+    "@eslint/js": "^10.0.1",
+    "typescript-eslint": "^8.59.4"
+  },
+  "keywords": [
+    "construct",
+    "cli",
+    "space",
+    "graph"
+  ],
+  "author": {
+    "name": "Construct Team"
+  },
+  "license": "MIT"
+}

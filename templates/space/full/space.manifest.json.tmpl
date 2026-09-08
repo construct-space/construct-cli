@@ -1,0 +1,57 @@
+{
+  "id": "{{.ID}}",
+  "name": "{{.DisplayName}}",
+  "version": "0.1.0",
+  "description": "{{.DisplayName}} space for Construct",
+  "author": {
+    "name": "Your Name"
+  },
+  "icon": "i-lucide-box",
+  "scopes": ["app"],
+  "projectAware": false,
+  "minConstructVersion": "0.7.0",
+  "navigation": {
+    "label": "{{.DisplayName}}",
+    "icon": "i-lucide-box",
+    "to": "{{.ID}}",
+    "order": 100
+  },
+  "pages": [
+    {
+      "path": "",
+      "label": "Home",
+      "icon": "i-lucide-home",
+      "default": true
+    },
+    {
+      "path": "settings",
+      "label": "Settings",
+      "icon": "i-lucide-settings"
+    }
+  ],
+  "toolbar": [
+    {
+      "id": "{{.ID}}-new",
+      "icon": "i-lucide-plus",
+      "label": "New {{.DisplayName}}",
+      "action": "create{{.DisplayNameNoSpace}}"
+    }
+  ],
+  "keywords": ["{{.ID}}"],
+  "agent": "agent/config.md",
+  "skills": ["SKILL.md"],
+  "actions": "src/actions.ts",
+  "widgets": [
+    {
+      "id": "summary",
+      "name": "{{.DisplayName}} Summary",
+      "description": "Quick summary widget for {{.DisplayName}}",
+      "icon": "i-lucide-box",
+      "defaultSize": "4x1",
+      "sizes": {
+        "2x1": "widgets/summary/2x1.vue",
+        "4x1": "widgets/summary/4x1.vue"
+      }
+    }
+  ]
+}

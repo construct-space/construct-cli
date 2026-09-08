@@ -1,0 +1,38 @@
+{
+  "name": "@construct-spaces/{{.Name}}",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate-entry": "construct build --entry-only",
+    "build": "construct build",
+    "dev": "construct dev",
+    "check": "construct check",
+    "lint": "eslint .",
+    "validate": "construct validate"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0",
+    "pinia": "^3.0.0",
+    "@vueuse/core": "^14.0.0"
+  },
+  "devDependencies": {
+    "@construct-space/cli": "latest",
+    "@construct-space/sdk": "latest",
+    "@eslint/js": "^10.0.1",
+    "@tailwindcss/vite": "^4.1.17",
+    "@vitejs/plugin-vue": "^6.0.6",
+    "eslint": "^10.2.1",
+    "eslint-plugin-vue": "^10.0.0",
+    "lucide-vue-next": "^1.0.0",
+    "tailwindcss": "^4.1.17",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.0.0",
+    "vite": "^8.0.12",
+    "vue-tsc": "^3.2.5"
+  },
+  "dependencies": {
+    "@construct-space/graph": "^0.7.1",
+    "@construct-space/ui": "^0.7.4"
+  }
+}

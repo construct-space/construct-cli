@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+/* Bundled inside {{.ID}}.space as style.css. Dynamic spaces must ship every
+   utility they use; host Tailwind is not part of the space contract. */
+@source "./**/*.{vue,ts,js}";
+@source "../widgets/**/*.{vue,ts,js}";
+@source "../node_modules/@construct-space/ui/dist/**/*.{js,vue}";

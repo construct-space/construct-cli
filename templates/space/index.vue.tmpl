@@ -1,0 +1,36 @@
+<script setup lang="ts">
+/**
+ * {{.DisplayName}} -- Home page
+ *
+ * Host libraries available at runtime (do not bundle):
+ *   @construct-space/ui     -- Vue 3 components (Button, Card, Modal, Table, Badge, ...)
+ *   @construct-space/sdk    -- useOrg, useOrgMembers, useToast, useAuth
+ *   lucide-vue-next         -- icons
+ *
+ * @construct-space/graph is bundled locally by this space.
+ */
+import { ref } from 'vue'
+import { Button, Card, Empty } from '@construct-space/ui'
+import { Sparkles } from 'lucide-vue-next'
+
+const greeting = ref('Your space is ready. Start building!')
+</script>
+
+<template>
+  <div class="h-full flex items-center justify-center p-6">
+    <Card variant="default" class="max-w-md w-full text-center">
+      <template #header>
+        <div class="flex items-center justify-center gap-2 w-full">
+          <Sparkles class="size-5 text-[var(--app-accent)]" />
+          <h1 class="text-lg font-semibold text-[var(--app-foreground)]">{{.DisplayName}}</h1>
+        </div>
+      </template>
+
+      <Empty :description="greeting" size="sm" />
+
+      <template #footer-end>
+        <Button variant="solid" size="sm" label="Get Started" />
+      </template>
+    </Card>
+  </div>
+</template>

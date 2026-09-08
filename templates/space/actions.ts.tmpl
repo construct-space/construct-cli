@@ -1,0 +1,58 @@
+/**
+ * Space Actions -- exposed to the AI agent via space_run_action.
+ *
+ * Each action: { description, params, run, tier? }.
+ *  - `params`      JSON-schema-ish input shape; each: { type, description?, required? }.
+ *  - `run`         receives the validated payload, returns any JSON-serialisable value.
+ *  - `tier`        (optional) default model bucket for useBrain() calls inside `run`:
+ *                    'small'   fast/cheap   -- summarisation, classification, short Q&A
+ *                    'medium'  balanced     -- general help, edits, structured output
+ *                    'large'   reasoning    -- long-form writing, deep code, planning
+ *                  The host resolves tier -> provider+model via the user's tier config
+ *                  (Settings -> LLM Providers). Per-call `brain.complete({ tier })`
+ *                  wins over the action default.
+ *
+ * Permission for useBrain():
+ *  - Declare `{{.ID}}:brain` in `permissions.catalog` (space.manifest.json).
+ *  - Add the action to `permissions.actions` mapping to that id, e.g.
+ *      "permissions": {
+ *        "actions": { "summarize": "{{.ID}}:brain" },
+ *        "catalog": [{ "id": "{{.ID}}:brain", "label": "Use AI summaries" }]
+ *      }
+ *
+ * Pair with @construct-space/graph for typed multi-tenant data:
+ *   import { useGraph } from '@construct-space/graph'
+ *   import { Item } from './models'
+ *   const items = useGraph(Item)
+ */
+
+import { useBrain } from '@construct-space/sdk'
+import type { SpaceActions } from '@construct-space/sdk'
+
+export const actions: SpaceActions = {
+  ping: {
+    description: 'Health check -- returns pong with the space id.',
+    params: {},
+    run: () => ({ pong: true, space: '{{.ID}}' }),
+  },
+
+  // Example: a tier-routed action. Delete or adapt for your space.
+  // Requires '{{.ID}}:brain' in permissions.catalog and a row in
+  // permissions.actions mapping 'summarize' to that id.
+  //
+  // summarize: {
+  //   description: 'Summarise the given text in 1-2 sentences.',
+  //   tier: 'small',
+  //   params: {
+  //     text: { type: 'string', required: true, description: 'Text to summarise.' },
+  //   },
+  //   async run({ text }: { text: string }) {
+  //     const brain = useBrain()
+  //     if (!brain) return { error: 'brain unavailable' }
+  //     const { text: summary } = await brain.complete({
+  //       prompt: `Summarise in 1-2 sentences:\n\n${text}`,
+  //     })
+  //     return { summary }
+  //   },
+  // },
+}

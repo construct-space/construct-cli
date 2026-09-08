@@ -1,0 +1,11 @@
+{
+  "hooks": [
+    {
+      "id": "{{.ID}}-no-rm-rf",
+      "type": "pre_tool",
+      "tools": ["bash"],
+      "command": "if echo \"$TOOL_INPUT\" | grep -qE 'rm\\s+-rf\\s+/'; then\n  echo '{\"block\":true,\"message\":\"Blocked: rm -rf with absolute root path\"}'\nfi",
+      "source": "space:{{.ID}}"
+    }
+  ]
+}

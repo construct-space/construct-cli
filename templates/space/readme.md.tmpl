@@ -1,0 +1,43 @@
+# {{.DisplayName}}
+
+A Construct space.
+
+## Development
+
+```bash
+bun install
+construct dev
+```
+
+## Build
+
+```bash
+construct build
+```
+
+Output goes to `dist/{{.ID}}.space`.
+
+## Bundle Contract
+
+`construct build` creates one self-contained `.space` ZIP bundle:
+
+```
+dist/{{.ID}}.space
+  manifest.json
+  app.iife.js
+  style.css
+  SKILL.md
+  agent/config.md
+  widgets/
+  assets/
+  tools/<platform>/{{.ID}}-tools
+  lib/<platform>/...
+  checksums.json
+```
+
+Spaces must import their own `src/style.css`; dynamic spaces do not depend on
+host Tailwind utilities.
+
+Native tools are optional. Add a root `tools.go` file and the CLI compiles it
+to `tools/<platform>/{{.ID}}-tools`. Put third-party helpers such as ffmpeg in
+`lib/<platform>/`; Construct adds that directory to PATH when the tool runs.

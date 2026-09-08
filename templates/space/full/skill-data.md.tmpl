@@ -1,0 +1,14 @@
+# {{.DisplayName}} -- data
+
+Reference doc for the agent when working with {{.DisplayName}} data.
+
+## Storage model
+
+Describe where {{.DisplayName}} data lives (Graph models, local storage, server API...). Edit this section to match the actual model.
+
+## CRUD conventions
+
+- Validate inputs before writing
+- Prefer the space's actions API over raw file or DB writes
+- Batch bulk changes when possible
+- Read existing rows before modifying -- changes should be additive when in doubt

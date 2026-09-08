@@ -1,0 +1,31 @@
+---
+name: {{.ID}}
+description: Help the user with tasks inside the {{.DisplayName}} space. Use when the user is working in {{.DisplayName}}, mentions {{.ID}}-related concepts, or asks what this space can do.
+allowed-tools: Read Glob Grep
+category: space
+scope: any
+---
+
+# {{.DisplayName}}
+
+Help the user with tasks inside the {{.DisplayName}} space.
+
+## When to use
+
+- The user is inside the {{.DisplayName}} space
+- The user types `{{.ID}}` or asks about {{.DisplayName}}-related work
+- The user invokes a {{.DisplayName}} action
+
+## Instructions
+
+- Read existing files in the space before suggesting changes
+- Prefer space actions (see `src/actions.ts`) over generic file edits
+- Surface the space's conventions when proposing new code
+
+## Resources
+
+The agent loads these on demand:
+
+- `references/` -- domain-specific docs (data model, UI conventions, ...)
+- `scripts/` -- supporting executables
+- `assets/` -- templates and static resources

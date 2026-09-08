@@ -1,0 +1,70 @@
+import { defineConfig } from 'vite'
+import tailwindcss from '@tailwindcss/vite'
+import vue from '@vitejs/plugin-vue'
+import { resolve } from 'path'
+
+/**
+ * Host-provided externals -- these are supplied by Construct at runtime
+ * via window.__CONSTRUCT__. Do NOT bundle them; they must stay external.
+ *
+ * Source of truth: construct-app/frontend/lib/spaceHost.ts
+ *
+ * IMPORTANT -- only add a package here AFTER confirming spaceHost.ts
+ * actually puts it on window.__CONSTRUCT__. Externalising a package the
+ * host doesn't expose silently substitutes `undefined`; you'll see
+ * "X is not a function" at runtime. When in doubt, bundle it (omit from
+ * this list) -- bundle bloat is cheaper than a broken space.
+ *
+ * Notably NOT externalised:
+ *   @construct-space/graph -- host does not expose this. Bundle it.
+ */
+const hostExternals = [
+  'vue',
+  'vue-router',
+  'pinia',
+  '@vueuse/core',
+  '@vueuse/integrations',
+  'lucide-vue-next',
+  'date-fns',
+  'dexie',
+  'zod',
+  '@construct-space/ui',
+  '@construct-space/sdk',
+]
+
+function makeGlobals(externals: string[]): Record<string, string> {
+  const globals: Record<string, string> = {}
+  for (const ext of externals) {
+    // Simple ids use dot access, scoped/slashed ids use bracket access
+    if (/^[a-z]+$/.test(ext)) {
+      globals[ext] = `window.__CONSTRUCT__.${ext}`
+    } else {
+      globals[ext] = `window.__CONSTRUCT__["${ext}"]`
+    }
+  }
+  return globals
+}
+
+export default defineConfig({
+  plugins: [tailwindcss(), vue()],
+  build: {
+    lib: {
+      entry: resolve(__dirname, 'src/entry.ts'),
+      name: '__CONSTRUCT_SPACE_{{.IDUpper}}',
+      fileName: 'space-{{.ID}}',
+      formats: ['iife'],
+    },
+    rollupOptions: {
+      external: hostExternals,
+      output: {
+        globals: makeGlobals(hostExternals),
+      },
+    },
+  },
+  resolve: {
+    alias: {
+      '~': resolve(__dirname),
+      '@': resolve(__dirname, 'src'),
+    },
+  },
+})
